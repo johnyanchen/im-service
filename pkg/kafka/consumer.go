@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"log"
+	"time"
 
 	"github.com/IBM/sarama"
 )
@@ -20,6 +21,9 @@ func NewConsumer(brokers []string, groupID string, handler Handler) (*Consumer, 
 	cfg := sarama.NewConfig()
 	cfg.Consumer.Group.Rebalance.GroupStrategies = []sarama.BalanceStrategy{sarama.NewBalanceStrategyRoundRobin()}
 	cfg.Consumer.Offsets.Initial = sarama.OffsetNewest
+	cfg.Consumer.Retry.Backoff = 2 * time.Second
+	cfg.Metadata.Retry.Max = 10
+	cfg.Metadata.Retry.Backoff = 2 * time.Second
 	g, err := sarama.NewConsumerGroup(brokers, groupID, cfg)
 	if err != nil {
 		return nil, err

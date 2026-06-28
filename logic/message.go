@@ -24,13 +24,23 @@ func (s *Server) SendMessage(ctx context.Context, req *pb.SendMessageRequest) (*
 	if err != nil {
 		return nil, err
 	}
+
+	meta, _ := s.db.GetConversationMeta(ctx, req.ConversationId, uid)
+	convType, convName := "", ""
+	if meta != nil {
+		convType = meta.Type
+		convName = meta.Name
+	}
+
 	_ = s.producer.PublishFanout(&kafka.FanoutEvent{
-		MessageID:      msg.ID,
-		ConversationID: msg.ConversationID,
-		FromID:         uid,
-		FromUsername:   username,
-		Content:        msg.Content,
-		CreatedAt:      msg.CreatedAt.UnixMilli(),
+		MessageID:        msg.ID,
+		ConversationID:   msg.ConversationID,
+		ConversationType: convType,
+		ConversationName: convName,
+		FromID:           uid,
+		FromUsername:     username,
+		Content:          msg.Content,
+		CreatedAt:        msg.CreatedAt.UnixMilli(),
 	})
 	return &pb.SendMessageResponse{MessageId: msg.ID, CreatedAt: msg.CreatedAt.UnixMilli()}, nil
 }

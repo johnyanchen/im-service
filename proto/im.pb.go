@@ -137,6 +137,7 @@ type SyncRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Token         string                 `protobuf:"bytes,1,opt,name=token,proto3" json:"token,omitempty"`
 	LastSyncAt    int64                  `protobuf:"varint,2,opt,name=last_sync_at,json=lastSyncAt,proto3" json:"last_sync_at,omitempty"`
+	Limit         int32                  `protobuf:"varint,3,opt,name=limit,proto3" json:"limit,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -185,6 +186,13 @@ func (x *SyncRequest) GetLastSyncAt() int64 {
 	return 0
 }
 
+func (x *SyncRequest) GetLimit() int32 {
+	if x != nil {
+		return x.Limit
+	}
+	return 0
+}
+
 type ConversationState struct {
 	state          protoimpl.MessageState `protogen:"open.v1"`
 	ConversationId int64                  `protobuf:"varint,1,opt,name=conversation_id,json=conversationId,proto3" json:"conversation_id,omitempty"`
@@ -192,6 +200,9 @@ type ConversationState struct {
 	LastMsgId      int64                  `protobuf:"varint,3,opt,name=last_msg_id,json=lastMsgId,proto3" json:"last_msg_id,omitempty"`
 	UnreadCount    int32                  `protobuf:"varint,4,opt,name=unread_count,json=unreadCount,proto3" json:"unread_count,omitempty"`
 	UpdatedAt      int64                  `protobuf:"varint,5,opt,name=updated_at,json=updatedAt,proto3" json:"updated_at,omitempty"`
+	Name           string                 `protobuf:"bytes,6,opt,name=name,proto3" json:"name,omitempty"`
+	LastMsgContent string                 `protobuf:"bytes,7,opt,name=last_msg_content,json=lastMsgContent,proto3" json:"last_msg_content,omitempty"`
+	LastMsgFrom    string                 `protobuf:"bytes,8,opt,name=last_msg_from,json=lastMsgFrom,proto3" json:"last_msg_from,omitempty"`
 	unknownFields  protoimpl.UnknownFields
 	sizeCache      protoimpl.SizeCache
 }
@@ -259,6 +270,27 @@ func (x *ConversationState) GetUpdatedAt() int64 {
 		return x.UpdatedAt
 	}
 	return 0
+}
+
+func (x *ConversationState) GetName() string {
+	if x != nil {
+		return x.Name
+	}
+	return ""
+}
+
+func (x *ConversationState) GetLastMsgContent() string {
+	if x != nil {
+		return x.LastMsgContent
+	}
+	return ""
+}
+
+func (x *ConversationState) GetLastMsgFrom() string {
+	if x != nil {
+		return x.LastMsgFrom
+	}
+	return ""
 }
 
 type MessageItem struct {
@@ -901,6 +933,242 @@ func (*PushResponse) Descriptor() ([]byte, []int) {
 	return file_proto_im_proto_rawDescGZIP(), []int{15}
 }
 
+type MarkReadRequest struct {
+	state          protoimpl.MessageState `protogen:"open.v1"`
+	Token          string                 `protobuf:"bytes,1,opt,name=token,proto3" json:"token,omitempty"`
+	ConversationId int64                  `protobuf:"varint,2,opt,name=conversation_id,json=conversationId,proto3" json:"conversation_id,omitempty"`
+	MsgId          int64                  `protobuf:"varint,3,opt,name=msg_id,json=msgId,proto3" json:"msg_id,omitempty"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
+}
+
+func (x *MarkReadRequest) Reset() {
+	*x = MarkReadRequest{}
+	mi := &file_proto_im_proto_msgTypes[16]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *MarkReadRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*MarkReadRequest) ProtoMessage() {}
+
+func (x *MarkReadRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_proto_im_proto_msgTypes[16]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use MarkReadRequest.ProtoReflect.Descriptor instead.
+func (*MarkReadRequest) Descriptor() ([]byte, []int) {
+	return file_proto_im_proto_rawDescGZIP(), []int{16}
+}
+
+func (x *MarkReadRequest) GetToken() string {
+	if x != nil {
+		return x.Token
+	}
+	return ""
+}
+
+func (x *MarkReadRequest) GetConversationId() int64 {
+	if x != nil {
+		return x.ConversationId
+	}
+	return 0
+}
+
+func (x *MarkReadRequest) GetMsgId() int64 {
+	if x != nil {
+		return x.MsgId
+	}
+	return 0
+}
+
+type MarkReadResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *MarkReadResponse) Reset() {
+	*x = MarkReadResponse{}
+	mi := &file_proto_im_proto_msgTypes[17]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *MarkReadResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*MarkReadResponse) ProtoMessage() {}
+
+func (x *MarkReadResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_proto_im_proto_msgTypes[17]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use MarkReadResponse.ProtoReflect.Descriptor instead.
+func (*MarkReadResponse) Descriptor() ([]byte, []int) {
+	return file_proto_im_proto_rawDescGZIP(), []int{17}
+}
+
+type ListUsersRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Token         string                 `protobuf:"bytes,1,opt,name=token,proto3" json:"token,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ListUsersRequest) Reset() {
+	*x = ListUsersRequest{}
+	mi := &file_proto_im_proto_msgTypes[18]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ListUsersRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ListUsersRequest) ProtoMessage() {}
+
+func (x *ListUsersRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_proto_im_proto_msgTypes[18]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ListUsersRequest.ProtoReflect.Descriptor instead.
+func (*ListUsersRequest) Descriptor() ([]byte, []int) {
+	return file_proto_im_proto_rawDescGZIP(), []int{18}
+}
+
+func (x *ListUsersRequest) GetToken() string {
+	if x != nil {
+		return x.Token
+	}
+	return ""
+}
+
+type UserItem struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Id            int64                  `protobuf:"varint,1,opt,name=id,proto3" json:"id,omitempty"`
+	Username      string                 `protobuf:"bytes,2,opt,name=username,proto3" json:"username,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *UserItem) Reset() {
+	*x = UserItem{}
+	mi := &file_proto_im_proto_msgTypes[19]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *UserItem) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*UserItem) ProtoMessage() {}
+
+func (x *UserItem) ProtoReflect() protoreflect.Message {
+	mi := &file_proto_im_proto_msgTypes[19]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use UserItem.ProtoReflect.Descriptor instead.
+func (*UserItem) Descriptor() ([]byte, []int) {
+	return file_proto_im_proto_rawDescGZIP(), []int{19}
+}
+
+func (x *UserItem) GetId() int64 {
+	if x != nil {
+		return x.Id
+	}
+	return 0
+}
+
+func (x *UserItem) GetUsername() string {
+	if x != nil {
+		return x.Username
+	}
+	return ""
+}
+
+type ListUsersResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Users         []*UserItem            `protobuf:"bytes,1,rep,name=users,proto3" json:"users,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ListUsersResponse) Reset() {
+	*x = ListUsersResponse{}
+	mi := &file_proto_im_proto_msgTypes[20]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ListUsersResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ListUsersResponse) ProtoMessage() {}
+
+func (x *ListUsersResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_proto_im_proto_msgTypes[20]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ListUsersResponse.ProtoReflect.Descriptor instead.
+func (*ListUsersResponse) Descriptor() ([]byte, []int) {
+	return file_proto_im_proto_rawDescGZIP(), []int{20}
+}
+
+func (x *ListUsersResponse) GetUsers() []*UserItem {
+	if x != nil {
+		return x.Users
+	}
+	return nil
+}
+
 var File_proto_im_proto protoreflect.FileDescriptor
 
 const file_proto_im_proto_rawDesc = "" +
@@ -914,18 +1182,22 @@ const file_proto_im_proto_rawDesc = "" +
 	"\n" +
 	"message_id\x18\x01 \x01(\x03R\tmessageId\x12\x1d\n" +
 	"\n" +
-	"created_at\x18\x02 \x01(\x03R\tcreatedAt\"E\n" +
+	"created_at\x18\x02 \x01(\x03R\tcreatedAt\"[\n" +
 	"\vSyncRequest\x12\x14\n" +
 	"\x05token\x18\x01 \x01(\tR\x05token\x12 \n" +
 	"\flast_sync_at\x18\x02 \x01(\x03R\n" +
-	"lastSyncAt\"\xb2\x01\n" +
+	"lastSyncAt\x12\x14\n" +
+	"\x05limit\x18\x03 \x01(\x05R\x05limit\"\x94\x02\n" +
 	"\x11ConversationState\x12'\n" +
 	"\x0fconversation_id\x18\x01 \x01(\x03R\x0econversationId\x12\x12\n" +
 	"\x04type\x18\x02 \x01(\tR\x04type\x12\x1e\n" +
 	"\vlast_msg_id\x18\x03 \x01(\x03R\tlastMsgId\x12!\n" +
 	"\funread_count\x18\x04 \x01(\x05R\vunreadCount\x12\x1d\n" +
 	"\n" +
-	"updated_at\x18\x05 \x01(\x03R\tupdatedAt\"\xbd\x01\n" +
+	"updated_at\x18\x05 \x01(\x03R\tupdatedAt\x12\x12\n" +
+	"\x04name\x18\x06 \x01(\tR\x04name\x12(\n" +
+	"\x10last_msg_content\x18\a \x01(\tR\x0elastMsgContent\x12\"\n" +
+	"\rlast_msg_from\x18\b \x01(\tR\vlastMsgFrom\"\xbd\x01\n" +
 	"\vMessageItem\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\x03R\x02id\x12'\n" +
 	"\x0fconversation_id\x18\x02 \x01(\x03R\x0econversationId\x12\x17\n" +
@@ -965,14 +1237,28 @@ const file_proto_im_proto_rawDesc = "" +
 	"\vPushRequest\x12\x17\n" +
 	"\auser_id\x18\x01 \x01(\x03R\x06userId\x12\x18\n" +
 	"\apayload\x18\x02 \x01(\fR\apayload\"\x0e\n" +
-	"\fPushResponse2\xd5\x02\n" +
+	"\fPushResponse\"g\n" +
+	"\x0fMarkReadRequest\x12\x14\n" +
+	"\x05token\x18\x01 \x01(\tR\x05token\x12'\n" +
+	"\x0fconversation_id\x18\x02 \x01(\x03R\x0econversationId\x12\x15\n" +
+	"\x06msg_id\x18\x03 \x01(\x03R\x05msgId\"\x12\n" +
+	"\x10MarkReadResponse\"(\n" +
+	"\x10ListUsersRequest\x12\x14\n" +
+	"\x05token\x18\x01 \x01(\tR\x05token\"6\n" +
+	"\bUserItem\x12\x0e\n" +
+	"\x02id\x18\x01 \x01(\x03R\x02id\x12\x1a\n" +
+	"\busername\x18\x02 \x01(\tR\busername\"7\n" +
+	"\x11ListUsersResponse\x12\"\n" +
+	"\x05users\x18\x01 \x03(\v2\f.im.UserItemR\x05users2\xc6\x03\n" +
 	"\fLogicService\x12,\n" +
 	"\x05Login\x12\x10.im.LoginRequest\x1a\x11.im.LoginResponse\x125\n" +
 	"\bRegister\x12\x13.im.RegisterRequest\x1a\x14.im.RegisterResponse\x12>\n" +
 	"\vSendMessage\x12\x16.im.SendMessageRequest\x1a\x17.im.SendMessageResponse\x12)\n" +
 	"\x04Sync\x12\x0f.im.SyncRequest\x1a\x10.im.SyncResponse\x12>\n" +
 	"\vCreateGroup\x12\x16.im.CreateGroupRequest\x1a\x17.im.CreateGroupResponse\x125\n" +
-	"\bCreateDM\x12\x13.im.CreateDMRequest\x1a\x14.im.CreateDMResponse2;\n" +
+	"\bCreateDM\x12\x13.im.CreateDMRequest\x1a\x14.im.CreateDMResponse\x125\n" +
+	"\bMarkRead\x12\x13.im.MarkReadRequest\x1a\x14.im.MarkReadResponse\x128\n" +
+	"\tListUsers\x12\x14.im.ListUsersRequest\x1a\x15.im.ListUsersResponse2;\n" +
 	"\x0eGatewayService\x12)\n" +
 	"\x04Push\x12\x0f.im.PushRequest\x1a\x10.im.PushResponseB\x12Z\x10im-service/protob\x06proto3"
 
@@ -988,7 +1274,7 @@ func file_proto_im_proto_rawDescGZIP() []byte {
 	return file_proto_im_proto_rawDescData
 }
 
-var file_proto_im_proto_msgTypes = make([]protoimpl.MessageInfo, 16)
+var file_proto_im_proto_msgTypes = make([]protoimpl.MessageInfo, 21)
 var file_proto_im_proto_goTypes = []any{
 	(*SendMessageRequest)(nil),  // 0: im.SendMessageRequest
 	(*SendMessageResponse)(nil), // 1: im.SendMessageResponse
@@ -1006,29 +1292,39 @@ var file_proto_im_proto_goTypes = []any{
 	(*CreateDMResponse)(nil),    // 13: im.CreateDMResponse
 	(*PushRequest)(nil),         // 14: im.PushRequest
 	(*PushResponse)(nil),        // 15: im.PushResponse
+	(*MarkReadRequest)(nil),     // 16: im.MarkReadRequest
+	(*MarkReadResponse)(nil),    // 17: im.MarkReadResponse
+	(*ListUsersRequest)(nil),    // 18: im.ListUsersRequest
+	(*UserItem)(nil),            // 19: im.UserItem
+	(*ListUsersResponse)(nil),   // 20: im.ListUsersResponse
 }
 var file_proto_im_proto_depIdxs = []int32{
 	3,  // 0: im.SyncResponse.conversations:type_name -> im.ConversationState
 	4,  // 1: im.SyncResponse.messages:type_name -> im.MessageItem
-	6,  // 2: im.LogicService.Login:input_type -> im.LoginRequest
-	8,  // 3: im.LogicService.Register:input_type -> im.RegisterRequest
-	0,  // 4: im.LogicService.SendMessage:input_type -> im.SendMessageRequest
-	2,  // 5: im.LogicService.Sync:input_type -> im.SyncRequest
-	10, // 6: im.LogicService.CreateGroup:input_type -> im.CreateGroupRequest
-	12, // 7: im.LogicService.CreateDM:input_type -> im.CreateDMRequest
-	14, // 8: im.GatewayService.Push:input_type -> im.PushRequest
-	7,  // 9: im.LogicService.Login:output_type -> im.LoginResponse
-	9,  // 10: im.LogicService.Register:output_type -> im.RegisterResponse
-	1,  // 11: im.LogicService.SendMessage:output_type -> im.SendMessageResponse
-	5,  // 12: im.LogicService.Sync:output_type -> im.SyncResponse
-	11, // 13: im.LogicService.CreateGroup:output_type -> im.CreateGroupResponse
-	13, // 14: im.LogicService.CreateDM:output_type -> im.CreateDMResponse
-	15, // 15: im.GatewayService.Push:output_type -> im.PushResponse
-	9,  // [9:16] is the sub-list for method output_type
-	2,  // [2:9] is the sub-list for method input_type
-	2,  // [2:2] is the sub-list for extension type_name
-	2,  // [2:2] is the sub-list for extension extendee
-	0,  // [0:2] is the sub-list for field type_name
+	19, // 2: im.ListUsersResponse.users:type_name -> im.UserItem
+	6,  // 3: im.LogicService.Login:input_type -> im.LoginRequest
+	8,  // 4: im.LogicService.Register:input_type -> im.RegisterRequest
+	0,  // 5: im.LogicService.SendMessage:input_type -> im.SendMessageRequest
+	2,  // 6: im.LogicService.Sync:input_type -> im.SyncRequest
+	10, // 7: im.LogicService.CreateGroup:input_type -> im.CreateGroupRequest
+	12, // 8: im.LogicService.CreateDM:input_type -> im.CreateDMRequest
+	16, // 9: im.LogicService.MarkRead:input_type -> im.MarkReadRequest
+	18, // 10: im.LogicService.ListUsers:input_type -> im.ListUsersRequest
+	14, // 11: im.GatewayService.Push:input_type -> im.PushRequest
+	7,  // 12: im.LogicService.Login:output_type -> im.LoginResponse
+	9,  // 13: im.LogicService.Register:output_type -> im.RegisterResponse
+	1,  // 14: im.LogicService.SendMessage:output_type -> im.SendMessageResponse
+	5,  // 15: im.LogicService.Sync:output_type -> im.SyncResponse
+	11, // 16: im.LogicService.CreateGroup:output_type -> im.CreateGroupResponse
+	13, // 17: im.LogicService.CreateDM:output_type -> im.CreateDMResponse
+	17, // 18: im.LogicService.MarkRead:output_type -> im.MarkReadResponse
+	20, // 19: im.LogicService.ListUsers:output_type -> im.ListUsersResponse
+	15, // 20: im.GatewayService.Push:output_type -> im.PushResponse
+	12, // [12:21] is the sub-list for method output_type
+	3,  // [3:12] is the sub-list for method input_type
+	3,  // [3:3] is the sub-list for extension type_name
+	3,  // [3:3] is the sub-list for extension extendee
+	0,  // [0:3] is the sub-list for field type_name
 }
 
 func init() { file_proto_im_proto_init() }
@@ -1042,7 +1338,7 @@ func file_proto_im_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_proto_im_proto_rawDesc), len(file_proto_im_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   16,
+			NumMessages:   21,
 			NumExtensions: 0,
 			NumServices:   2,
 		},

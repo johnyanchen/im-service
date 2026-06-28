@@ -38,14 +38,13 @@ CREATE TABLE user_conversations (
     user_id BIGINT NOT NULL REFERENCES users(id),
     conversation_id BIGINT NOT NULL REFERENCES conversations(id),
     last_msg_id BIGINT,
-    unread_count INT NOT NULL DEFAULT 0,
+    last_read_msg_id BIGINT NOT NULL DEFAULT 0,
+    last_msg_content TEXT NOT NULL DEFAULT '',
+    last_msg_from VARCHAR(64) NOT NULL DEFAULT '',
+    conv_type VARCHAR(8) NOT NULL DEFAULT '',
+    conv_name VARCHAR(128) NOT NULL DEFAULT '',
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     PRIMARY KEY (user_id, conversation_id)
 );
 
 CREATE INDEX idx_user_conv_updated ON user_conversations(user_id, updated_at);
-
-CREATE TABLE user_sessions (
-    user_id BIGINT PRIMARY KEY REFERENCES users(id),
-    last_sync_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
-);

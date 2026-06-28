@@ -91,7 +91,8 @@ function handleSync(data) {
   if(data.conversations) data.conversations.forEach(c=>{
     const cid = c.conversationId||c.conversation_id;
     let existing = conversations.find(x=>x.conversation_id===cid);
-    const conv = {conversation_id:cid, unread_count:c.unreadCount||c.unread_count||0, last_msg_id:c.lastMsgId||c.last_msg_id};
+    const conv = {conversation_id:cid, unread_count:c.unreadCount||c.unread_count||0, last_msg_id:c.lastMsgId||c.last_msg_id,
+      name:c.name||('会话 #'+cid), type:c.type||'dm'};
     if(existing) Object.assign(existing,conv); else conversations.push(conv);
   });
   if(data.messages) data.messages.forEach(m=>{
@@ -108,15 +109,16 @@ function handleNewMessage(m) {
   if(!messagesByConv[cid]) messagesByConv[cid]=[];
   messagesByConv[cid].push({id:m.message_id, from:m.from_username, content:m.content});
   let conv = conversations.find(x=>x.conversation_id===cid);
-  if(!conv){conv={conversation_id:cid,unread_count:0};conversations.push(conv);}
-  if(cid!==currentConvId) conv.unread_count=(conv.unread_count||0)+1;
+  if(!conv){conv={conversation_id:cid, unread_count:0, name:m.conversation_name||('会话 #'+cid), type:m.conversation_type||'dm'};conversations.push(conv);}
+  if(cid!==currentConvId) conv.unread_count=m.unread_count||((conv.unread_count||0)+1);
+  else conv.unread_count=0;
   renderSidebar(); if(cid===currentConvId) renderMessages();
 }
 
 function renderSidebar() {
   document.getElementById('sidebar').innerHTML = conversations.map(c =>
     `<div class="conv ${c.conversation_id===currentConvId?'active':''}" onclick="selectConv(${c.conversation_id})">
-      会话 #${c.conversation_id}${c.unread_count?`<span class="unread">${c.unread_count}</span>`:''}
+      ${c.name||('会话 #'+c.conversation_id)}${c.unread_count?`<span class="unread">${c.unread_count}</span>`:''}
     </div>`
   ).join('');
 }
@@ -124,7 +126,12 @@ function renderSidebar() {
 function selectConv(id) {
   currentConvId = id;
   let c = conversations.find(x=>x.conversation_id===id);
-  if(c) c.unread_count = 0;
+  if(c && c.unread_count > 0) {
+    c.unread_count = 0;
+    const lastMsg = messagesByConv[id];
+    const msgId = lastMsg && lastMsg.length > 0 ? lastMsg[lastMsg.length-1].id : 0;
+    if(msgId) ws.send(JSON.stringify({type:'mark_read', token, conversation_id:id, msg_id:msgId}));
+  }
   renderSidebar(); renderMessages();
 }
 

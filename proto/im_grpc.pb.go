@@ -25,6 +25,8 @@ const (
 	LogicService_Sync_FullMethodName        = "/im.LogicService/Sync"
 	LogicService_CreateGroup_FullMethodName = "/im.LogicService/CreateGroup"
 	LogicService_CreateDM_FullMethodName    = "/im.LogicService/CreateDM"
+	LogicService_MarkRead_FullMethodName    = "/im.LogicService/MarkRead"
+	LogicService_ListUsers_FullMethodName   = "/im.LogicService/ListUsers"
 )
 
 // LogicServiceClient is the client API for LogicService service.
@@ -37,6 +39,8 @@ type LogicServiceClient interface {
 	Sync(ctx context.Context, in *SyncRequest, opts ...grpc.CallOption) (*SyncResponse, error)
 	CreateGroup(ctx context.Context, in *CreateGroupRequest, opts ...grpc.CallOption) (*CreateGroupResponse, error)
 	CreateDM(ctx context.Context, in *CreateDMRequest, opts ...grpc.CallOption) (*CreateDMResponse, error)
+	MarkRead(ctx context.Context, in *MarkReadRequest, opts ...grpc.CallOption) (*MarkReadResponse, error)
+	ListUsers(ctx context.Context, in *ListUsersRequest, opts ...grpc.CallOption) (*ListUsersResponse, error)
 }
 
 type logicServiceClient struct {
@@ -107,6 +111,26 @@ func (c *logicServiceClient) CreateDM(ctx context.Context, in *CreateDMRequest, 
 	return out, nil
 }
 
+func (c *logicServiceClient) MarkRead(ctx context.Context, in *MarkReadRequest, opts ...grpc.CallOption) (*MarkReadResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(MarkReadResponse)
+	err := c.cc.Invoke(ctx, LogicService_MarkRead_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *logicServiceClient) ListUsers(ctx context.Context, in *ListUsersRequest, opts ...grpc.CallOption) (*ListUsersResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ListUsersResponse)
+	err := c.cc.Invoke(ctx, LogicService_ListUsers_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // LogicServiceServer is the server API for LogicService service.
 // All implementations must embed UnimplementedLogicServiceServer
 // for forward compatibility.
@@ -117,6 +141,8 @@ type LogicServiceServer interface {
 	Sync(context.Context, *SyncRequest) (*SyncResponse, error)
 	CreateGroup(context.Context, *CreateGroupRequest) (*CreateGroupResponse, error)
 	CreateDM(context.Context, *CreateDMRequest) (*CreateDMResponse, error)
+	MarkRead(context.Context, *MarkReadRequest) (*MarkReadResponse, error)
+	ListUsers(context.Context, *ListUsersRequest) (*ListUsersResponse, error)
 	mustEmbedUnimplementedLogicServiceServer()
 }
 
@@ -144,6 +170,12 @@ func (UnimplementedLogicServiceServer) CreateGroup(context.Context, *CreateGroup
 }
 func (UnimplementedLogicServiceServer) CreateDM(context.Context, *CreateDMRequest) (*CreateDMResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method CreateDM not implemented")
+}
+func (UnimplementedLogicServiceServer) MarkRead(context.Context, *MarkReadRequest) (*MarkReadResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method MarkRead not implemented")
+}
+func (UnimplementedLogicServiceServer) ListUsers(context.Context, *ListUsersRequest) (*ListUsersResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method ListUsers not implemented")
 }
 func (UnimplementedLogicServiceServer) mustEmbedUnimplementedLogicServiceServer() {}
 func (UnimplementedLogicServiceServer) testEmbeddedByValue()                      {}
@@ -274,6 +306,42 @@ func _LogicService_CreateDM_Handler(srv interface{}, ctx context.Context, dec fu
 	return interceptor(ctx, in, info, handler)
 }
 
+func _LogicService_MarkRead_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(MarkReadRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(LogicServiceServer).MarkRead(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: LogicService_MarkRead_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(LogicServiceServer).MarkRead(ctx, req.(*MarkReadRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _LogicService_ListUsers_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ListUsersRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(LogicServiceServer).ListUsers(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: LogicService_ListUsers_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(LogicServiceServer).ListUsers(ctx, req.(*ListUsersRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // LogicService_ServiceDesc is the grpc.ServiceDesc for LogicService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -304,6 +372,14 @@ var LogicService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "CreateDM",
 			Handler:    _LogicService_CreateDM_Handler,
+		},
+		{
+			MethodName: "MarkRead",
+			Handler:    _LogicService_MarkRead_Handler,
+		},
+		{
+			MethodName: "ListUsers",
+			Handler:    _LogicService_ListUsers_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

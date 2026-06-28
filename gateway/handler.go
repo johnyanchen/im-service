@@ -18,6 +18,7 @@ type WSMessage struct {
 	PeerID         int64   `json:"peer_id,omitempty"`
 	GroupName      string  `json:"group_name,omitempty"`
 	MemberIDs      []int64 `json:"member_ids,omitempty"`
+	MsgID          int64   `json:"msg_id,omitempty"`
 }
 
 func (s *GatewayServer) handleWS(conn *websocket.Conn, userID int64) {
@@ -54,6 +55,13 @@ func (s *GatewayServer) handleWS(conn *websocket.Conn, userID int64) {
 				continue
 			}
 			s.writeJSON(conn, map[string]interface{}{"type": "sync_resp", "data": resp})
+		case "mark_read":
+			_, err := s.logic.MarkRead(ctx, &pb.MarkReadRequest{Token: msg.Token, ConversationId: msg.ConversationID, MsgId: msg.MsgID})
+			if err != nil {
+				s.writeJSON(conn, map[string]interface{}{"type": "error", "error": err.Error()})
+				continue
+			}
+			s.writeJSON(conn, map[string]interface{}{"type": "read_ack", "conversation_id": msg.ConversationID})
 		case "create_dm":
 			resp, err := s.logic.CreateDM(ctx, &pb.CreateDMRequest{Token: msg.Token, PeerId: msg.PeerID})
 			if err != nil {
@@ -70,6 +78,14 @@ func (s *GatewayServer) handleWS(conn *websocket.Conn, userID int64) {
 				continue
 			}
 			s.writeJSON(conn, map[string]interface{}{"type": "group_created", "group_id": resp.GroupId, "conversation_id": resp.ConversationId})
+		case "list_users":
+			// deprecated: use GET /api/users instead
+			resp, err := s.logic.ListUsers(ctx, &pb.ListUsersRequest{Token: msg.Token})
+			if err != nil {
+				s.writeJSON(conn, map[string]interface{}{"type": "error", "error": err.Error()})
+				continue
+			}
+			s.writeJSON(conn, map[string]interface{}{"type": "users_list", "users": resp.Users})
 		}
 	}
 }

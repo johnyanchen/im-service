@@ -16,6 +16,7 @@ message SendMessageResponse {
 message SyncRequest {
   string token = 1;
   int64 last_sync_at = 2;
+  int32 limit = 3;
 }
 
 message ConversationState {
@@ -24,6 +25,9 @@ message ConversationState {
   int64 last_msg_id = 3;
   int32 unread_count = 4;
   int64 updated_at = 5;
+  string name = 6;
+  string last_msg_content = 7;
+  string last_msg_from = 8;
 }
 
 message MessageItem {
@@ -87,6 +91,27 @@ message PushRequest {
 
 message PushResponse {}
 
+message MarkReadRequest {
+  string token = 1;
+  int64 conversation_id = 2;
+  int64 msg_id = 3;
+}
+
+message MarkReadResponse {}
+
+message ListUsersRequest {
+  string token = 1;
+}
+
+message UserItem {
+  int64 id = 1;
+  string username = 2;
+}
+
+message ListUsersResponse {
+  repeated UserItem users = 1;
+}
+
 service LogicService {
   rpc Login(LoginRequest) returns (LoginResponse);
   rpc Register(RegisterRequest) returns (RegisterResponse);
@@ -94,6 +119,8 @@ service LogicService {
   rpc Sync(SyncRequest) returns (SyncResponse);
   rpc CreateGroup(CreateGroupRequest) returns (CreateGroupResponse);
   rpc CreateDM(CreateDMRequest) returns (CreateDMResponse);
+  rpc MarkRead(MarkReadRequest) returns (MarkReadResponse);
+  rpc ListUsers(ListUsersRequest) returns (ListUsersResponse);
 }
 
 service GatewayService {

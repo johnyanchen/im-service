@@ -9,12 +9,14 @@ import (
 const TopicMessageFanout = "message_fanout"
 
 type FanoutEvent struct {
-	MessageID      int64  `json:"message_id"`
-	ConversationID int64  `json:"conversation_id"`
-	FromID         int64  `json:"from_id"`
-	FromUsername   string `json:"from_username"`
-	Content        string `json:"content"`
-	CreatedAt      int64  `json:"created_at"`
+	MessageID        int64  `json:"message_id"`
+	ConversationID   int64  `json:"conversation_id"`
+	ConversationType string `json:"conversation_type"`
+	ConversationName string `json:"conversation_name"`
+	FromID           int64  `json:"from_id"`
+	FromUsername     string `json:"from_username"`
+	Content          string `json:"content"`
+	CreatedAt        int64  `json:"created_at"`
 }
 
 type Producer struct {

@@ -69,6 +69,8 @@ func (s *GatewayServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		json.NewEncoder(w).Encode(resp)
+	case r.URL.Path == "/api/users" && r.Method == "GET":
+		s.handleListUsers(w, r)
 	default:
 		http.FileServer(http.Dir("web")).ServeHTTP(w, r)
 	}
@@ -133,4 +135,24 @@ func (s *GatewayServer) StartGRPC() {
 	pb.RegisterGatewayServiceServer(grpcServer, s)
 	log.Printf("gateway gRPC 监听 %s", s.cfg.GatewayGRPC)
 	go grpcServer.Serve(lis)
+}
+
+func (s *GatewayServer) handleListUsers(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	token := r.Header.Get("Authorization")
+	if len(token) > 7 && token[:7] == "Bearer " {
+		token = token[7:]
+	}
+	if token == "" {
+		w.WriteHeader(http.StatusUnauthorized)
+		json.NewEncoder(w).Encode(map[string]string{"error": "missing token"})
+		return
+	}
+	resp, err := s.logic.ListUsers(r.Context(), &pb.ListUsersRequest{Token: token})
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		json.NewEncoder(w).Encode(map[string]string{"error": err.Error()})
+		return
+	}
+	json.NewEncoder(w).Encode(resp)
 }

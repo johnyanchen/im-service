@@ -42,16 +42,6 @@ func (f *FanoutProcessor) Handle(ctx context.Context, event *kafka.FanoutEvent) 
 		return err
 	}
 
-	payload, _ := json.Marshal(map[string]interface{}{
-		"type":            "new_message",
-		"message_id":      event.MessageID,
-		"conversation_id": event.ConversationID,
-		"from_id":         event.FromID,
-		"from_username":   event.FromUsername,
-		"content":         event.Content,
-		"created_at":      event.CreatedAt,
-	})
-
 	sem := make(chan struct{}, 50)
 	var wg sync.WaitGroup
 	for _, uid := range members {
@@ -60,7 +50,19 @@ func (f *FanoutProcessor) Handle(ctx context.Context, event *kafka.FanoutEvent) 
 		go func(userID int64) {
 			defer func() { <-sem; wg.Done() }()
 			isSender := userID == event.FromID
-			if err := f.db.UpsertUserConversation(ctx, userID, event.ConversationID, event.MessageID, isSender); err != nil {
+
+			// 单聊时 conv_name 对每个人不同：存的是对方的名字
+			convName := event.ConversationName
+			if event.ConversationType == "dm" {
+				if isSender {
+					convName = event.ConversationName // 发送者看到的是对方名字（Logic已算好）
+				} else {
+					convName = event.FromUsername // 接收者看到的是发送者名字
+				}
+			}
+
+			unread, err := f.db.UpsertUserConversation(ctx, userID, event.ConversationID, event.MessageID, isSender, event.Content, event.FromUsername, event.ConversationType, convName)
+			if err != nil {
 				log.Printf("fanout: upsert uc error uid=%d: %v", userID, err)
 			}
 			route, err := f.redis.GetRoute(ctx, userID)
@@ -71,7 +73,19 @@ func (f *FanoutProcessor) Handle(ctx context.Context, event *kafka.FanoutEvent) 
 			if client == nil {
 				return
 			}
-			_, err = client.Push(ctx, &pb.PushRequest{UserId: userID, Payload: payload})
+			pushPayload, _ := json.Marshal(map[string]interface{}{
+				"type":              "new_message",
+				"message_id":        event.MessageID,
+				"conversation_id":   event.ConversationID,
+				"conversation_type": event.ConversationType,
+				"conversation_name": convName,
+				"from_id":           event.FromID,
+				"from_username":     event.FromUsername,
+				"content":           event.Content,
+				"unread_count":      unread,
+				"created_at":        event.CreatedAt,
+			})
+			_, err = client.Push(ctx, &pb.PushRequest{UserId: userID, Payload: pushPayload})
 			if err != nil {
 				log.Printf("fanout: push to %d via %s failed: %v", userID, route, err)
 			}

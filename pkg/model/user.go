@@ -30,3 +30,20 @@ func (db *DB) GetUserByUsername(ctx context.Context, username string) (*User, er
 	}
 	return u, nil
 }
+
+func (db *DB) ListUsers(ctx context.Context) ([]*User, error) {
+	rows, err := db.Pool.Query(ctx, "SELECT id, username FROM users ORDER BY id")
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var users []*User
+	for rows.Next() {
+		u := &User{}
+		if err := rows.Scan(&u.ID, &u.Username); err != nil {
+			return nil, err
+		}
+		users = append(users, u)
+	}
+	return users, nil
+}
