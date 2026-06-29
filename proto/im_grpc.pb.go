@@ -388,6 +388,7 @@ var LogicService_ServiceDesc = grpc.ServiceDesc{
 
 const (
 	GatewayService_Push_FullMethodName = "/im.GatewayService/Push"
+	GatewayService_Kick_FullMethodName = "/im.GatewayService/Kick"
 )
 
 // GatewayServiceClient is the client API for GatewayService service.
@@ -395,6 +396,7 @@ const (
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type GatewayServiceClient interface {
 	Push(ctx context.Context, in *PushRequest, opts ...grpc.CallOption) (*PushResponse, error)
+	Kick(ctx context.Context, in *KickRequest, opts ...grpc.CallOption) (*KickResponse, error)
 }
 
 type gatewayServiceClient struct {
@@ -415,11 +417,22 @@ func (c *gatewayServiceClient) Push(ctx context.Context, in *PushRequest, opts .
 	return out, nil
 }
 
+func (c *gatewayServiceClient) Kick(ctx context.Context, in *KickRequest, opts ...grpc.CallOption) (*KickResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(KickResponse)
+	err := c.cc.Invoke(ctx, GatewayService_Kick_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // GatewayServiceServer is the server API for GatewayService service.
 // All implementations must embed UnimplementedGatewayServiceServer
 // for forward compatibility.
 type GatewayServiceServer interface {
 	Push(context.Context, *PushRequest) (*PushResponse, error)
+	Kick(context.Context, *KickRequest) (*KickResponse, error)
 	mustEmbedUnimplementedGatewayServiceServer()
 }
 
@@ -432,6 +445,9 @@ type UnimplementedGatewayServiceServer struct{}
 
 func (UnimplementedGatewayServiceServer) Push(context.Context, *PushRequest) (*PushResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method Push not implemented")
+}
+func (UnimplementedGatewayServiceServer) Kick(context.Context, *KickRequest) (*KickResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method Kick not implemented")
 }
 func (UnimplementedGatewayServiceServer) mustEmbedUnimplementedGatewayServiceServer() {}
 func (UnimplementedGatewayServiceServer) testEmbeddedByValue()                        {}
@@ -472,6 +488,24 @@ func _GatewayService_Push_Handler(srv interface{}, ctx context.Context, dec func
 	return interceptor(ctx, in, info, handler)
 }
 
+func _GatewayService_Kick_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(KickRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(GatewayServiceServer).Kick(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: GatewayService_Kick_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(GatewayServiceServer).Kick(ctx, req.(*KickRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // GatewayService_ServiceDesc is the grpc.ServiceDesc for GatewayService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -482,6 +516,10 @@ var GatewayService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "Push",
 			Handler:    _GatewayService_Push_Handler,
+		},
+		{
+			MethodName: "Kick",
+			Handler:    _GatewayService_Kick_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

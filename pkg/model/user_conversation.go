@@ -18,9 +18,8 @@ type UserConversation struct {
 	LastMsgFrom    string
 }
 
-func (db *DB) UpsertUserConversation(ctx context.Context, userID, convID, msgID int64, isSender bool, content, fromUsername, convType, convName string) (int32, error) {
-	var lastReadMsgID int64
-	err := db.Pool.QueryRow(ctx, `
+func (db *DB) UpsertUserConversation(ctx context.Context, userID, convID, msgID int64, isSender bool, content, fromUsername, convType, convName string) error {
+	_, err := db.Pool.Exec(ctx, `
 		INSERT INTO user_conversations(user_id, conversation_id, last_msg_id, last_read_msg_id, last_msg_content, last_msg_from, conv_type, conv_name, updated_at)
 		VALUES($1, $2, $3, CASE WHEN $4 THEN $3 ELSE 0 END, $5, $6, $7, $8, NOW())
 		ON CONFLICT(user_id, conversation_id) DO UPDATE SET
@@ -30,18 +29,9 @@ func (db *DB) UpsertUserConversation(ctx context.Context, userID, convID, msgID 
 			last_msg_from = $6,
 			conv_type = $7,
 			conv_name = $8,
-			updated_at = NOW()
-		RETURNING last_read_msg_id`,
-		userID, convID, msgID, isSender, content, fromUsername, convType, convName).Scan(&lastReadMsgID)
-	if err != nil {
-		return 0, err
-	}
-	// 读时计算未读数
-	var unread int32
-	db.Pool.QueryRow(ctx,
-		"SELECT COUNT(*) FROM messages WHERE conversation_id=$1 AND id > $2",
-		convID, lastReadMsgID).Scan(&unread)
-	return unread, nil
+			updated_at = NOW()`,
+		userID, convID, msgID, isSender, content, fromUsername, convType, convName)
+	return err
 }
 
 func (db *DB) GetUpdatedConversations(ctx context.Context, userID int64, since time.Time, limit int32) ([]*UserConversation, error) {

@@ -123,6 +123,13 @@ service LogicService {
   rpc ListUsers(ListUsersRequest) returns (ListUsersResponse);
 }
 
+message KickRequest {
+  int64 user_id = 1;
+}
+
+message KickResponse {}
+
 service GatewayService {
   rpc Push(PushRequest) returns (PushResponse);
+  rpc Kick(KickRequest) returns (KickResponse);
 }

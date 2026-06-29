@@ -1,0 +1,155 @@
+<h2>三栏布局 · 微信配色</h2>
+<p class="subtitle">三栏结构 + 微信绿/白/浅灰配色，确认这个方向</p>
+
+<div class="mockup">
+  <div class="mockup-header">IM 主界面</div>
+  <div class="mockup-body" style="padding:0;">
+    <div style="display:flex; height:420px;">
+      <!-- 左侧 icon 导航栏 -->
+      <div style="width:60px; background:#2e2e2e; display:flex; flex-direction:column; align-items:center; padding:16px 0; gap:6px;">
+        <!-- 头像 -->
+        <div style="width:38px;height:38px;border-radius:50%;background:#07c160;margin-bottom:16px;display:flex;align-items:center;justify-content:center;">
+          <span style="color:#fff;font-size:14px;font-weight:bold;">Y</span>
+        </div>
+        <!-- 导航图标 -->
+        <div style="width:40px;height:40px;border-radius:8px;background:#3a3a3a;display:flex;align-items:center;justify-content:center;border:2px solid #07c160;">
+          <span style="font-size:16px;">💬</span>
+        </div>
+        <div style="width:40px;height:40px;border-radius:8px;display:flex;align-items:center;justify-content:center;">
+          <span style="font-size:16px;">👥</span>
+        </div>
+        <div style="width:40px;height:40px;border-radius:8px;display:flex;align-items:center;justify-content:center;">
+          <span style="font-size:16px;">⭐</span>
+        </div>
+        <div style="flex:1;"></div>
+        <div style="width:40px;height:40px;border-radius:8px;display:flex;align-items:center;justify-content:center;">
+          <span style="font-size:16px;">⚙️</span>
+        </div>
+      </div>
+
+      <!-- 中间会话列表 -->
+      <div style="width:240px; background:#f7f7f7; border-right:1px solid #e8e8e8; display:flex; flex-direction:column;">
+        <!-- 搜索框 -->
+        <div style="padding:12px;">
+          <div style="height:32px;background:#ededed;border-radius:4px;display:flex;align-items:center;padding:0 10px;">
+            <span style="color:#b2b2b2;font-size:12px;">🔍 搜索</span>
+          </div>
+        </div>
+        <!-- 会话项 -->
+        <div style="flex:1;overflow:hidden;">
+          <!-- 选中项 -->
+          <div style="display:flex;align-items:center;gap:10px;padding:10px 12px;background:#c9e7c8;">
+            <div style="width:40px;height:40px;border-radius:4px;background:#07c160;flex-shrink:0;display:flex;align-items:center;justify-content:center;">
+              <span style="color:#fff;font-size:14px;">张</span>
+            </div>
+            <div style="flex:1;min-width:0;">
+              <div style="display:flex;justify-content:space-between;">
+                <span style="font-size:13px;color:#1a1a1a;font-weight:500;">张三</span>
+                <span style="font-size:10px;color:#b2b2b2;">14:30</span>
+              </div>
+              <p style="font-size:11px;color:#888;margin:2px 0 0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">今晚一起吃饭吗？</p>
+            </div>
+          </div>
+          <!-- 未选中项 -->
+          <div style="display:flex;align-items:center;gap:10px;padding:10px 12px;">
+            <div style="width:40px;height:40px;border-radius:4px;background:#faa61a;flex-shrink:0;display:flex;align-items:center;justify-content:center;">
+              <span style="color:#fff;font-size:14px;">开</span>
+            </div>
+            <div style="flex:1;min-width:0;">
+              <div style="display:flex;justify-content:space-between;">
+                <span style="font-size:13px;color:#1a1a1a;font-weight:500;">开发组</span>
+                <span style="font-size:10px;color:#b2b2b2;">12:05</span>
+              </div>
+              <p style="font-size:11px;color:#888;margin:2px 0 0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">李四: 代码已经提交了</p>
+            </div>
+            <div style="width:16px;height:16px;border-radius:50%;background:#f44336;display:flex;align-items:center;justify-content:center;">
+              <span style="color:#fff;font-size:9px;">3</span>
+            </div>
+          </div>
+          <!-- 更多项 -->
+          <div style="display:flex;align-items:center;gap:10px;padding:10px 12px;">
+            <div style="width:40px;height:40px;border-radius:4px;background:#5865F2;flex-shrink:0;display:flex;align-items:center;justify-content:center;">
+              <span style="color:#fff;font-size:14px;">王</span>
+            </div>
+            <div style="flex:1;min-width:0;">
+              <div style="display:flex;justify-content:space-between;">
+                <span style="font-size:13px;color:#1a1a1a;font-weight:500;">王五</span>
+                <span style="font-size:10px;color:#b2b2b2;">昨天</span>
+              </div>
+              <p style="font-size:11px;color:#888;margin:2px 0 0;">好的，收到</p>
+            </div>
+          </div>
+          <div style="display:flex;align-items:center;gap:10px;padding:10px 12px;">
+            <div style="width:40px;height:40px;border-radius:4px;background:#e91e63;flex-shrink:0;display:flex;align-items:center;justify-content:center;">
+              <span style="color:#fff;font-size:14px;">产</span>
+            </div>
+            <div style="flex:1;min-width:0;">
+              <div style="display:flex;justify-content:space-between;">
+                <span style="font-size:13px;color:#1a1a1a;font-weight:500;">产品讨论群</span>
+                <span style="font-size:10px;color:#b2b2b2;">周一</span>
+              </div>
+              <p style="font-size:11px;color:#888;margin:2px 0 0;">赵六: 需求文档更新了</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 右侧聊天区 -->
+      <div style="flex:1; background:#ebebeb; display:flex; flex-direction:column;">
+        <!-- 顶部栏 -->
+        <div style="height:50px;background:#f5f5f5;border-bottom:1px solid #e0e0e0;display:flex;align-items:center;padding:0 16px;">
+          <span style="font-size:14px;font-weight:500;color:#1a1a1a;">张三</span>
+        </div>
+        <!-- 消息区 -->
+        <div style="flex:1;padding:16px;display:flex;flex-direction:column;gap:12px;overflow:hidden;">
+          <!-- 对方消息 -->
+          <div style="display:flex;gap:8px;align-items:flex-start;">
+            <div style="width:32px;height:32px;border-radius:4px;background:#07c160;flex-shrink:0;display:flex;align-items:center;justify-content:center;">
+              <span style="color:#fff;font-size:11px;">张</span>
+            </div>
+            <div style="background:#fff;border-radius:4px;padding:8px 12px;max-width:55%;position:relative;">
+              <p style="font-size:13px;color:#1a1a1a;margin:0;">在吗？周末有空吗？</p>
+            </div>
+          </div>
+          <!-- 我的消息 -->
+          <div style="display:flex;gap:8px;align-items:flex-start;flex-direction:row-reverse;">
+            <div style="width:32px;height:32px;border-radius:4px;background:#5865F2;flex-shrink:0;display:flex;align-items:center;justify-content:center;">
+              <span style="color:#fff;font-size:11px;">Y</span>
+            </div>
+            <div style="background:#95ec69;border-radius:4px;padding:8px 12px;max-width:55%;">
+              <p style="font-size:13px;color:#1a1a1a;margin:0;">有空呀，什么安排？</p>
+            </div>
+          </div>
+          <!-- 对方消息 -->
+          <div style="display:flex;gap:8px;align-items:flex-start;">
+            <div style="width:32px;height:32px;border-radius:4px;background:#07c160;flex-shrink:0;display:flex;align-items:center;justify-content:center;">
+              <span style="color:#fff;font-size:11px;">张</span>
+            </div>
+            <div style="background:#fff;border-radius:4px;padding:8px 12px;max-width:55%;">
+              <p style="font-size:13px;color:#1a1a1a;margin:0;">今晚一起吃饭吗？</p>
+            </div>
+          </div>
+        </div>
+        <!-- 输入区 -->
+        <div style="background:#f5f5f5;border-top:1px solid #e0e0e0;padding:12px 16px;display:flex;align-items:center;gap:10px;">
+          <span style="font-size:18px;cursor:pointer;">😊</span>
+          <div style="flex:1;height:34px;background:#fff;border-radius:4px;border:1px solid #e0e0e0;"></div>
+          <div style="height:34px;padding:0 16px;background:#07c160;border-radius:4px;display:flex;align-items:center;justify-content:center;">
+            <span style="color:#fff;font-size:12px;font-weight:500;">发送</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div style="margin-top:24px;">
+  <h3>设计要点</h3>
+  <ul style="font-size:14px;color:#555;line-height:1.8;">
+    <li><strong>左栏导航</strong>：深灰底 + 绿色高亮，放头像、会话、联系人、收藏、设置</li>
+    <li><strong>中栏会话列表</strong>：浅灰 #f7f7f7 底，选中项绿色浅底 #c9e7c8</li>
+    <li><strong>右栏聊天</strong>：灰色背景 #ebebeb，对方白色气泡，自己绿色气泡 #95ec69</li>
+    <li><strong>头像</strong>：微信风格方圆角（border-radius: 4px）</li>
+    <li><strong>主色</strong>：微信绿 #07c160</li>
+  </ul>
+</div>

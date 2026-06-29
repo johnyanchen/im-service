@@ -1169,6 +1169,86 @@ func (x *ListUsersResponse) GetUsers() []*UserItem {
 	return nil
 }
 
+type KickRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	UserId        int64                  `protobuf:"varint,1,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *KickRequest) Reset() {
+	*x = KickRequest{}
+	mi := &file_proto_im_proto_msgTypes[21]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *KickRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*KickRequest) ProtoMessage() {}
+
+func (x *KickRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_proto_im_proto_msgTypes[21]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use KickRequest.ProtoReflect.Descriptor instead.
+func (*KickRequest) Descriptor() ([]byte, []int) {
+	return file_proto_im_proto_rawDescGZIP(), []int{21}
+}
+
+func (x *KickRequest) GetUserId() int64 {
+	if x != nil {
+		return x.UserId
+	}
+	return 0
+}
+
+type KickResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *KickResponse) Reset() {
+	*x = KickResponse{}
+	mi := &file_proto_im_proto_msgTypes[22]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *KickResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*KickResponse) ProtoMessage() {}
+
+func (x *KickResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_proto_im_proto_msgTypes[22]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use KickResponse.ProtoReflect.Descriptor instead.
+func (*KickResponse) Descriptor() ([]byte, []int) {
+	return file_proto_im_proto_rawDescGZIP(), []int{22}
+}
+
 var File_proto_im_proto protoreflect.FileDescriptor
 
 const file_proto_im_proto_rawDesc = "" +
@@ -1249,7 +1329,10 @@ const file_proto_im_proto_rawDesc = "" +
 	"\x02id\x18\x01 \x01(\x03R\x02id\x12\x1a\n" +
 	"\busername\x18\x02 \x01(\tR\busername\"7\n" +
 	"\x11ListUsersResponse\x12\"\n" +
-	"\x05users\x18\x01 \x03(\v2\f.im.UserItemR\x05users2\xc6\x03\n" +
+	"\x05users\x18\x01 \x03(\v2\f.im.UserItemR\x05users\"&\n" +
+	"\vKickRequest\x12\x17\n" +
+	"\auser_id\x18\x01 \x01(\x03R\x06userId\"\x0e\n" +
+	"\fKickResponse2\xc6\x03\n" +
 	"\fLogicService\x12,\n" +
 	"\x05Login\x12\x10.im.LoginRequest\x1a\x11.im.LoginResponse\x125\n" +
 	"\bRegister\x12\x13.im.RegisterRequest\x1a\x14.im.RegisterResponse\x12>\n" +
@@ -1258,9 +1341,10 @@ const file_proto_im_proto_rawDesc = "" +
 	"\vCreateGroup\x12\x16.im.CreateGroupRequest\x1a\x17.im.CreateGroupResponse\x125\n" +
 	"\bCreateDM\x12\x13.im.CreateDMRequest\x1a\x14.im.CreateDMResponse\x125\n" +
 	"\bMarkRead\x12\x13.im.MarkReadRequest\x1a\x14.im.MarkReadResponse\x128\n" +
-	"\tListUsers\x12\x14.im.ListUsersRequest\x1a\x15.im.ListUsersResponse2;\n" +
+	"\tListUsers\x12\x14.im.ListUsersRequest\x1a\x15.im.ListUsersResponse2f\n" +
 	"\x0eGatewayService\x12)\n" +
-	"\x04Push\x12\x0f.im.PushRequest\x1a\x10.im.PushResponseB\x12Z\x10im-service/protob\x06proto3"
+	"\x04Push\x12\x0f.im.PushRequest\x1a\x10.im.PushResponse\x12)\n" +
+	"\x04Kick\x12\x0f.im.KickRequest\x1a\x10.im.KickResponseB\x12Z\x10im-service/protob\x06proto3"
 
 var (
 	file_proto_im_proto_rawDescOnce sync.Once
@@ -1274,7 +1358,7 @@ func file_proto_im_proto_rawDescGZIP() []byte {
 	return file_proto_im_proto_rawDescData
 }
 
-var file_proto_im_proto_msgTypes = make([]protoimpl.MessageInfo, 21)
+var file_proto_im_proto_msgTypes = make([]protoimpl.MessageInfo, 23)
 var file_proto_im_proto_goTypes = []any{
 	(*SendMessageRequest)(nil),  // 0: im.SendMessageRequest
 	(*SendMessageResponse)(nil), // 1: im.SendMessageResponse
@@ -1297,6 +1381,8 @@ var file_proto_im_proto_goTypes = []any{
 	(*ListUsersRequest)(nil),    // 18: im.ListUsersRequest
 	(*UserItem)(nil),            // 19: im.UserItem
 	(*ListUsersResponse)(nil),   // 20: im.ListUsersResponse
+	(*KickRequest)(nil),         // 21: im.KickRequest
+	(*KickResponse)(nil),        // 22: im.KickResponse
 }
 var file_proto_im_proto_depIdxs = []int32{
 	3,  // 0: im.SyncResponse.conversations:type_name -> im.ConversationState
@@ -1311,17 +1397,19 @@ var file_proto_im_proto_depIdxs = []int32{
 	16, // 9: im.LogicService.MarkRead:input_type -> im.MarkReadRequest
 	18, // 10: im.LogicService.ListUsers:input_type -> im.ListUsersRequest
 	14, // 11: im.GatewayService.Push:input_type -> im.PushRequest
-	7,  // 12: im.LogicService.Login:output_type -> im.LoginResponse
-	9,  // 13: im.LogicService.Register:output_type -> im.RegisterResponse
-	1,  // 14: im.LogicService.SendMessage:output_type -> im.SendMessageResponse
-	5,  // 15: im.LogicService.Sync:output_type -> im.SyncResponse
-	11, // 16: im.LogicService.CreateGroup:output_type -> im.CreateGroupResponse
-	13, // 17: im.LogicService.CreateDM:output_type -> im.CreateDMResponse
-	17, // 18: im.LogicService.MarkRead:output_type -> im.MarkReadResponse
-	20, // 19: im.LogicService.ListUsers:output_type -> im.ListUsersResponse
-	15, // 20: im.GatewayService.Push:output_type -> im.PushResponse
-	12, // [12:21] is the sub-list for method output_type
-	3,  // [3:12] is the sub-list for method input_type
+	21, // 12: im.GatewayService.Kick:input_type -> im.KickRequest
+	7,  // 13: im.LogicService.Login:output_type -> im.LoginResponse
+	9,  // 14: im.LogicService.Register:output_type -> im.RegisterResponse
+	1,  // 15: im.LogicService.SendMessage:output_type -> im.SendMessageResponse
+	5,  // 16: im.LogicService.Sync:output_type -> im.SyncResponse
+	11, // 17: im.LogicService.CreateGroup:output_type -> im.CreateGroupResponse
+	13, // 18: im.LogicService.CreateDM:output_type -> im.CreateDMResponse
+	17, // 19: im.LogicService.MarkRead:output_type -> im.MarkReadResponse
+	20, // 20: im.LogicService.ListUsers:output_type -> im.ListUsersResponse
+	15, // 21: im.GatewayService.Push:output_type -> im.PushResponse
+	22, // 22: im.GatewayService.Kick:output_type -> im.KickResponse
+	13, // [13:23] is the sub-list for method output_type
+	3,  // [3:13] is the sub-list for method input_type
 	3,  // [3:3] is the sub-list for extension type_name
 	3,  // [3:3] is the sub-list for extension extendee
 	0,  // [0:3] is the sub-list for field type_name
@@ -1338,7 +1426,7 @@ func file_proto_im_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_proto_im_proto_rawDesc), len(file_proto_im_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   21,
+			NumMessages:   23,
 			NumExtensions: 0,
 			NumServices:   2,
 		},

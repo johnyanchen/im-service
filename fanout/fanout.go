@@ -61,7 +61,7 @@ func (f *FanoutProcessor) Handle(ctx context.Context, event *kafka.FanoutEvent) 
 				}
 			}
 
-			unread, err := f.db.UpsertUserConversation(ctx, userID, event.ConversationID, event.MessageID, isSender, event.Content, event.FromUsername, event.ConversationType, convName)
+			err := f.db.UpsertUserConversation(ctx, userID, event.ConversationID, event.MessageID, isSender, event.Content, event.FromUsername, event.ConversationType, convName)
 			if err != nil {
 				log.Printf("fanout: upsert uc error uid=%d: %v", userID, err)
 			}
@@ -82,7 +82,6 @@ func (f *FanoutProcessor) Handle(ctx context.Context, event *kafka.FanoutEvent) 
 				"from_id":           event.FromID,
 				"from_username":     event.FromUsername,
 				"content":           event.Content,
-				"unread_count":      unread,
 				"created_at":        event.CreatedAt,
 			})
 			_, err = client.Push(ctx, &pb.PushRequest{UserId: userID, Payload: pushPayload})
