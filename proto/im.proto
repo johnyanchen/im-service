@@ -121,6 +121,14 @@ service LogicService {
   rpc CreateDM(CreateDMRequest) returns (CreateDMResponse);
   rpc MarkRead(MarkReadRequest) returns (MarkReadResponse);
   rpc ListUsers(ListUsersRequest) returns (ListUsersResponse);
+  rpc SendFriendRequest(SendFriendRequestReq) returns (SendFriendRequestResp);
+  rpc HandleFriendRequest(HandleFriendRequestReq) returns (HandleFriendRequestResp);
+  rpc ListFriends(ListFriendsRequest) returns (ListFriendsResponse);
+  rpc ListFriendRequests(ListFriendRequestsRequest) returns (ListFriendRequestsResponse);
+  rpc GetInviteCode(GetInviteCodeRequest) returns (GetInviteCodeResponse);
+  rpc RefreshInviteCode(GetInviteCodeRequest) returns (GetInviteCodeResponse);
+  rpc AddFriendByCode(AddFriendByCodeRequest) returns (AddFriendByCodeResponse);
+  rpc GetMessages(GetMessagesRequest) returns (GetMessagesResponse);
 }
 
 message KickRequest {
@@ -128,6 +136,73 @@ message KickRequest {
 }
 
 message KickResponse {}
+
+message SendFriendRequestReq {
+  string token = 1;
+  int64 to_id = 2;
+}
+
+message SendFriendRequestResp {}
+
+message HandleFriendRequestReq {
+  string token = 1;
+  int64 request_id = 2;
+  bool accept = 3;
+}
+
+message HandleFriendRequestResp {}
+
+message ListFriendsRequest {
+  string token = 1;
+}
+
+message ListFriendsResponse {
+  repeated UserItem friends = 1;
+}
+
+message FriendRequestItem {
+  int64 id = 1;
+  int64 from_id = 2;
+  string from_username = 3;
+  string status = 4;
+  int64 created_at = 5;
+}
+
+message ListFriendRequestsRequest {
+  string token = 1;
+}
+
+message ListFriendRequestsResponse {
+  repeated FriendRequestItem requests = 1;
+}
+
+message GetInviteCodeRequest {
+  string token = 1;
+}
+
+message GetInviteCodeResponse {
+  string code = 1;
+}
+
+message AddFriendByCodeRequest {
+  string token = 1;
+  string code = 2;
+}
+
+message AddFriendByCodeResponse {
+  string username = 1;
+}
+
+message GetMessagesRequest {
+  string token = 1;
+  int64 conversation_id = 2;
+  int64 before_id = 3;
+  int32 limit = 4;
+}
+
+message GetMessagesResponse {
+  repeated MessageItem messages = 1;
+}
 
 service GatewayService {
   rpc Push(PushRequest) returns (PushResponse);

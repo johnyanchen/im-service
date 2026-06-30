@@ -21,10 +21,10 @@ type UserConversation struct {
 func (db *DB) UpsertUserConversation(ctx context.Context, userID, convID, msgID int64, isSender bool, content, fromUsername, convType, convName string) error {
 	_, err := db.Pool.Exec(ctx, `
 		INSERT INTO user_conversations(user_id, conversation_id, last_msg_id, last_read_msg_id, last_msg_content, last_msg_from, conv_type, conv_name, updated_at)
-		VALUES($1, $2, $3, CASE WHEN $4 THEN $3 ELSE 0 END, $5, $6, $7, $8, NOW())
+		VALUES($1, $2, $3, CASE WHEN $4::bool THEN $3::bigint ELSE 0::bigint END, $5, $6, $7, $8, NOW())
 		ON CONFLICT(user_id, conversation_id) DO UPDATE SET
 			last_msg_id = $3,
-			last_read_msg_id = CASE WHEN $4 THEN $3 ELSE user_conversations.last_read_msg_id END,
+			last_read_msg_id = CASE WHEN $4::bool THEN $3::bigint ELSE user_conversations.last_read_msg_id END,
 			last_msg_content = $5,
 			last_msg_from = $6,
 			conv_type = $7,

@@ -1,0 +1,3 @@
+ALTER TABLE users ADD COLUMN invite_code VARCHAR(8) UNIQUE;
+UPDATE users SET invite_code = UPPER(SUBSTR(MD5(RANDOM()::TEXT), 1, 6)) WHERE invite_code IS NULL;
+ALTER TABLE users ALTER COLUMN invite_code SET NOT NULL;

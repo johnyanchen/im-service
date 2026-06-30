@@ -98,6 +98,22 @@ func (s *GatewayServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		s.handleCreateGroup(w, r)
 	case strings.HasPrefix(r.URL.Path, "/api/conversations/") && strings.HasSuffix(r.URL.Path, "/read") && r.Method == "POST":
 		s.handleMarkRead(w, r)
+	case strings.HasPrefix(r.URL.Path, "/api/conversations/") && strings.HasSuffix(r.URL.Path, "/messages") && r.Method == "GET":
+		s.handleGetMessages(w, r)
+	case r.URL.Path == "/api/friends" && r.Method == "GET":
+		s.handleListFriends(w, r)
+	case r.URL.Path == "/api/friends/requests" && r.Method == "GET":
+		s.handleListFriendRequests(w, r)
+	case r.URL.Path == "/api/friends/request" && r.Method == "POST":
+		s.handleSendFriendRequest(w, r)
+	case r.URL.Path == "/api/friends/handle" && r.Method == "POST":
+		s.handleHandleFriendRequest(w, r)
+	case r.URL.Path == "/api/invite-code" && r.Method == "GET":
+		s.handleGetInviteCode(w, r)
+	case r.URL.Path == "/api/invite-code/refresh" && r.Method == "POST":
+		s.handleRefreshInviteCode(w, r)
+	case r.URL.Path == "/api/friends/add-by-code" && r.Method == "POST":
+		s.handleAddFriendByCode(w, r)
 	default:
 		http.FileServer(http.Dir("web")).ServeHTTP(w, r)
 	}
@@ -252,6 +268,30 @@ func (s *GatewayServer) handleMarkRead(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(map[string]string{"status": "ok"})
 }
 
+func (s *GatewayServer) handleGetMessages(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	token := s.extractToken(r)
+	if token == "" {
+		w.WriteHeader(http.StatusUnauthorized)
+		json.NewEncoder(w).Encode(map[string]string{"error": "missing token"})
+		return
+	}
+	// path: /api/conversations/{id}/messages
+	parts := strings.Split(r.URL.Path, "/")
+	convID, _ := strconv.ParseInt(parts[3], 10, 64)
+	beforeID, _ := strconv.ParseInt(r.URL.Query().Get("before_id"), 10, 64)
+	limit, _ := strconv.ParseInt(r.URL.Query().Get("limit"), 10, 32)
+	resp, err := s.logic.GetMessages(r.Context(), &pb.GetMessagesRequest{
+		Token: token, ConversationId: convID, BeforeId: beforeID, Limit: int32(limit),
+	})
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		json.NewEncoder(w).Encode(map[string]string{"error": err.Error()})
+		return
+	}
+	json.NewEncoder(w).Encode(resp)
+}
+
 func (s *GatewayServer) handleCreateDM(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	token := s.extractToken(r)
@@ -306,6 +346,138 @@ func (s *GatewayServer) handleListUsers(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 	resp, err := s.logic.ListUsers(r.Context(), &pb.ListUsersRequest{Token: token})
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		json.NewEncoder(w).Encode(map[string]string{"error": err.Error()})
+		return
+	}
+	json.NewEncoder(w).Encode(resp)
+}
+
+func (s *GatewayServer) handleListFriends(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	token := s.extractToken(r)
+	if token == "" {
+		w.WriteHeader(http.StatusUnauthorized)
+		json.NewEncoder(w).Encode(map[string]string{"error": "missing token"})
+		return
+	}
+	resp, err := s.logic.ListFriends(r.Context(), &pb.ListFriendsRequest{Token: token})
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		json.NewEncoder(w).Encode(map[string]string{"error": err.Error()})
+		return
+	}
+	json.NewEncoder(w).Encode(resp)
+}
+
+func (s *GatewayServer) handleListFriendRequests(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	token := s.extractToken(r)
+	if token == "" {
+		w.WriteHeader(http.StatusUnauthorized)
+		json.NewEncoder(w).Encode(map[string]string{"error": "missing token"})
+		return
+	}
+	resp, err := s.logic.ListFriendRequests(r.Context(), &pb.ListFriendRequestsRequest{Token: token})
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		json.NewEncoder(w).Encode(map[string]string{"error": err.Error()})
+		return
+	}
+	json.NewEncoder(w).Encode(resp)
+}
+
+func (s *GatewayServer) handleSendFriendRequest(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	token := s.extractToken(r)
+	if token == "" {
+		w.WriteHeader(http.StatusUnauthorized)
+		json.NewEncoder(w).Encode(map[string]string{"error": "missing token"})
+		return
+	}
+	var body struct {
+		ToID int64 `json:"to_id"`
+	}
+	json.NewDecoder(r.Body).Decode(&body)
+	resp, err := s.logic.SendFriendRequest(r.Context(), &pb.SendFriendRequestReq{Token: token, ToId: body.ToID})
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		json.NewEncoder(w).Encode(map[string]string{"error": err.Error()})
+		return
+	}
+	json.NewEncoder(w).Encode(resp)
+}
+
+func (s *GatewayServer) handleHandleFriendRequest(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	token := s.extractToken(r)
+	if token == "" {
+		w.WriteHeader(http.StatusUnauthorized)
+		json.NewEncoder(w).Encode(map[string]string{"error": "missing token"})
+		return
+	}
+	var body struct {
+		RequestID int64 `json:"request_id"`
+		Accept    bool  `json:"accept"`
+	}
+	json.NewDecoder(r.Body).Decode(&body)
+	resp, err := s.logic.HandleFriendRequest(r.Context(), &pb.HandleFriendRequestReq{Token: token, RequestId: body.RequestID, Accept: body.Accept})
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		json.NewEncoder(w).Encode(map[string]string{"error": err.Error()})
+		return
+	}
+	json.NewEncoder(w).Encode(resp)
+}
+
+func (s *GatewayServer) handleGetInviteCode(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	token := s.extractToken(r)
+	if token == "" {
+		w.WriteHeader(http.StatusUnauthorized)
+		json.NewEncoder(w).Encode(map[string]string{"error": "missing token"})
+		return
+	}
+	resp, err := s.logic.GetInviteCode(r.Context(), &pb.GetInviteCodeRequest{Token: token})
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		json.NewEncoder(w).Encode(map[string]string{"error": err.Error()})
+		return
+	}
+	json.NewEncoder(w).Encode(resp)
+}
+
+func (s *GatewayServer) handleRefreshInviteCode(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	token := s.extractToken(r)
+	if token == "" {
+		w.WriteHeader(http.StatusUnauthorized)
+		json.NewEncoder(w).Encode(map[string]string{"error": "missing token"})
+		return
+	}
+	resp, err := s.logic.RefreshInviteCode(r.Context(), &pb.GetInviteCodeRequest{Token: token})
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		json.NewEncoder(w).Encode(map[string]string{"error": err.Error()})
+		return
+	}
+	json.NewEncoder(w).Encode(resp)
+}
+
+func (s *GatewayServer) handleAddFriendByCode(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	token := s.extractToken(r)
+	if token == "" {
+		w.WriteHeader(http.StatusUnauthorized)
+		json.NewEncoder(w).Encode(map[string]string{"error": "missing token"})
+		return
+	}
+	var body struct {
+		Code string `json:"code"`
+	}
+	json.NewDecoder(r.Body).Decode(&body)
+	resp, err := s.logic.AddFriendByCode(r.Context(), &pb.AddFriendByCodeRequest{Token: token, Code: body.Code})
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		json.NewEncoder(w).Encode(map[string]string{"error": err.Error()})

@@ -31,10 +31,7 @@ const (
 	LogicService_HandleFriendRequest_FullMethodName = "/im.LogicService/HandleFriendRequest"
 	LogicService_ListFriends_FullMethodName         = "/im.LogicService/ListFriends"
 	LogicService_ListFriendRequests_FullMethodName  = "/im.LogicService/ListFriendRequests"
-	LogicService_GetInviteCode_FullMethodName       = "/im.LogicService/GetInviteCode"
-	LogicService_RefreshInviteCode_FullMethodName   = "/im.LogicService/RefreshInviteCode"
-	LogicService_AddFriendByCode_FullMethodName     = "/im.LogicService/AddFriendByCode"
-	LogicService_GetMessages_FullMethodName         = "/im.LogicService/GetMessages"
+	LogicService_SearchUsers_FullMethodName         = "/im.LogicService/SearchUsers"
 )
 
 // LogicServiceClient is the client API for LogicService service.
@@ -53,10 +50,7 @@ type LogicServiceClient interface {
 	HandleFriendRequest(ctx context.Context, in *HandleFriendRequestReq, opts ...grpc.CallOption) (*HandleFriendRequestResp, error)
 	ListFriends(ctx context.Context, in *ListFriendsRequest, opts ...grpc.CallOption) (*ListFriendsResponse, error)
 	ListFriendRequests(ctx context.Context, in *ListFriendRequestsRequest, opts ...grpc.CallOption) (*ListFriendRequestsResponse, error)
-	GetInviteCode(ctx context.Context, in *GetInviteCodeRequest, opts ...grpc.CallOption) (*GetInviteCodeResponse, error)
-	RefreshInviteCode(ctx context.Context, in *GetInviteCodeRequest, opts ...grpc.CallOption) (*GetInviteCodeResponse, error)
-	AddFriendByCode(ctx context.Context, in *AddFriendByCodeRequest, opts ...grpc.CallOption) (*AddFriendByCodeResponse, error)
-	GetMessages(ctx context.Context, in *GetMessagesRequest, opts ...grpc.CallOption) (*GetMessagesResponse, error)
+	SearchUsers(ctx context.Context, in *SearchUsersRequest, opts ...grpc.CallOption) (*SearchUsersResponse, error)
 }
 
 type logicServiceClient struct {
@@ -187,40 +181,10 @@ func (c *logicServiceClient) ListFriendRequests(ctx context.Context, in *ListFri
 	return out, nil
 }
 
-func (c *logicServiceClient) GetInviteCode(ctx context.Context, in *GetInviteCodeRequest, opts ...grpc.CallOption) (*GetInviteCodeResponse, error) {
+func (c *logicServiceClient) SearchUsers(ctx context.Context, in *SearchUsersRequest, opts ...grpc.CallOption) (*SearchUsersResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(GetInviteCodeResponse)
-	err := c.cc.Invoke(ctx, LogicService_GetInviteCode_FullMethodName, in, out, cOpts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-func (c *logicServiceClient) RefreshInviteCode(ctx context.Context, in *GetInviteCodeRequest, opts ...grpc.CallOption) (*GetInviteCodeResponse, error) {
-	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(GetInviteCodeResponse)
-	err := c.cc.Invoke(ctx, LogicService_RefreshInviteCode_FullMethodName, in, out, cOpts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-func (c *logicServiceClient) AddFriendByCode(ctx context.Context, in *AddFriendByCodeRequest, opts ...grpc.CallOption) (*AddFriendByCodeResponse, error) {
-	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(AddFriendByCodeResponse)
-	err := c.cc.Invoke(ctx, LogicService_AddFriendByCode_FullMethodName, in, out, cOpts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-func (c *logicServiceClient) GetMessages(ctx context.Context, in *GetMessagesRequest, opts ...grpc.CallOption) (*GetMessagesResponse, error) {
-	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(GetMessagesResponse)
-	err := c.cc.Invoke(ctx, LogicService_GetMessages_FullMethodName, in, out, cOpts...)
+	out := new(SearchUsersResponse)
+	err := c.cc.Invoke(ctx, LogicService_SearchUsers_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -243,10 +207,7 @@ type LogicServiceServer interface {
 	HandleFriendRequest(context.Context, *HandleFriendRequestReq) (*HandleFriendRequestResp, error)
 	ListFriends(context.Context, *ListFriendsRequest) (*ListFriendsResponse, error)
 	ListFriendRequests(context.Context, *ListFriendRequestsRequest) (*ListFriendRequestsResponse, error)
-	GetInviteCode(context.Context, *GetInviteCodeRequest) (*GetInviteCodeResponse, error)
-	RefreshInviteCode(context.Context, *GetInviteCodeRequest) (*GetInviteCodeResponse, error)
-	AddFriendByCode(context.Context, *AddFriendByCodeRequest) (*AddFriendByCodeResponse, error)
-	GetMessages(context.Context, *GetMessagesRequest) (*GetMessagesResponse, error)
+	SearchUsers(context.Context, *SearchUsersRequest) (*SearchUsersResponse, error)
 	mustEmbedUnimplementedLogicServiceServer()
 }
 
@@ -293,17 +254,8 @@ func (UnimplementedLogicServiceServer) ListFriends(context.Context, *ListFriends
 func (UnimplementedLogicServiceServer) ListFriendRequests(context.Context, *ListFriendRequestsRequest) (*ListFriendRequestsResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method ListFriendRequests not implemented")
 }
-func (UnimplementedLogicServiceServer) GetInviteCode(context.Context, *GetInviteCodeRequest) (*GetInviteCodeResponse, error) {
-	return nil, status.Error(codes.Unimplemented, "method GetInviteCode not implemented")
-}
-func (UnimplementedLogicServiceServer) RefreshInviteCode(context.Context, *GetInviteCodeRequest) (*GetInviteCodeResponse, error) {
-	return nil, status.Error(codes.Unimplemented, "method RefreshInviteCode not implemented")
-}
-func (UnimplementedLogicServiceServer) AddFriendByCode(context.Context, *AddFriendByCodeRequest) (*AddFriendByCodeResponse, error) {
-	return nil, status.Error(codes.Unimplemented, "method AddFriendByCode not implemented")
-}
-func (UnimplementedLogicServiceServer) GetMessages(context.Context, *GetMessagesRequest) (*GetMessagesResponse, error) {
-	return nil, status.Error(codes.Unimplemented, "method GetMessages not implemented")
+func (UnimplementedLogicServiceServer) SearchUsers(context.Context, *SearchUsersRequest) (*SearchUsersResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method SearchUsers not implemented")
 }
 func (UnimplementedLogicServiceServer) mustEmbedUnimplementedLogicServiceServer() {}
 func (UnimplementedLogicServiceServer) testEmbeddedByValue()                      {}
@@ -542,74 +494,20 @@ func _LogicService_ListFriendRequests_Handler(srv interface{}, ctx context.Conte
 	return interceptor(ctx, in, info, handler)
 }
 
-func _LogicService_GetInviteCode_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(GetInviteCodeRequest)
+func _LogicService_SearchUsers_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(SearchUsersRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(LogicServiceServer).GetInviteCode(ctx, in)
+		return srv.(LogicServiceServer).SearchUsers(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: LogicService_GetInviteCode_FullMethodName,
+		FullMethod: LogicService_SearchUsers_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(LogicServiceServer).GetInviteCode(ctx, req.(*GetInviteCodeRequest))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
-func _LogicService_RefreshInviteCode_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(GetInviteCodeRequest)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(LogicServiceServer).RefreshInviteCode(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: LogicService_RefreshInviteCode_FullMethodName,
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(LogicServiceServer).RefreshInviteCode(ctx, req.(*GetInviteCodeRequest))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
-func _LogicService_AddFriendByCode_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(AddFriendByCodeRequest)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(LogicServiceServer).AddFriendByCode(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: LogicService_AddFriendByCode_FullMethodName,
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(LogicServiceServer).AddFriendByCode(ctx, req.(*AddFriendByCodeRequest))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
-func _LogicService_GetMessages_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(GetMessagesRequest)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(LogicServiceServer).GetMessages(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: LogicService_GetMessages_FullMethodName,
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(LogicServiceServer).GetMessages(ctx, req.(*GetMessagesRequest))
+		return srv.(LogicServiceServer).SearchUsers(ctx, req.(*SearchUsersRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -670,20 +568,8 @@ var LogicService_ServiceDesc = grpc.ServiceDesc{
 			Handler:    _LogicService_ListFriendRequests_Handler,
 		},
 		{
-			MethodName: "GetInviteCode",
-			Handler:    _LogicService_GetInviteCode_Handler,
-		},
-		{
-			MethodName: "RefreshInviteCode",
-			Handler:    _LogicService_RefreshInviteCode_Handler,
-		},
-		{
-			MethodName: "AddFriendByCode",
-			Handler:    _LogicService_AddFriendByCode_Handler,
-		},
-		{
-			MethodName: "GetMessages",
-			Handler:    _LogicService_GetMessages_Handler,
+			MethodName: "SearchUsers",
+			Handler:    _LogicService_SearchUsers_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

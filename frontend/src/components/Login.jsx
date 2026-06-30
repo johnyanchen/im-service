@@ -18,28 +18,33 @@ export default function Login({ onAuth }) {
   }
 
   return (
-    <div className="flex items-center justify-center h-screen bg-gray-50">
-      <div className="w-80 p-8 bg-white rounded-2xl shadow-sm">
-        <h1 className="text-2xl font-semibold text-center mb-6">IM Service</h1>
+    <div className="flex items-center justify-center h-screen bg-[#111111]">
+      <div className="w-80 p-8">
+        <div className="flex justify-center mb-8">
+          <div className="w-16 h-16 rounded-2xl bg-[#07c160] flex items-center justify-center">
+            <svg className="w-9 h-9 text-white" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M8.5 13.5a1.5 1.5 0 100-3 1.5 1.5 0 000 3zM15.5 13.5a1.5 1.5 0 100-3 1.5 1.5 0 000 3zM12 2C6.477 2 2 6.477 2 12c0 2.05.62 3.955 1.68 5.54L2 22l4.46-1.68A9.94 9.94 0 0012 22c5.523 0 10-4.477 10-10S17.523 2 12 2z"/>
+            </svg>
+          </div>
+        </div>
+        <h1 className="text-xl font-medium text-center mb-8 text-white">微信</h1>
         <input
-          className="w-full px-4 py-3 mb-3 rounded-xl bg-gray-100 outline-none text-sm"
-          placeholder="用户名"
+          className="w-full px-0 py-3 mb-4 bg-transparent border-b border-gray-700 outline-none text-sm text-white placeholder-gray-500 focus:border-[#07c160] transition"
+          placeholder="请输入用户名"
           value={username}
           onChange={e => setUsername(e.target.value)}
         />
         <input
-          className="w-full px-4 py-3 mb-4 rounded-xl bg-gray-100 outline-none text-sm"
+          className="w-full px-0 py-3 mb-6 bg-transparent border-b border-gray-700 outline-none text-sm text-white placeholder-gray-500 focus:border-[#07c160] transition"
           type="password"
-          placeholder="密码"
+          placeholder="请输入密码"
           value={password}
           onChange={e => setPassword(e.target.value)}
           onKeyDown={e => e.key === 'Enter' && submit('login')}
         />
-        {error && <p className="text-red-500 text-xs mb-3 text-center">{error}</p>}
-        <div className="flex gap-2">
-          <button onClick={() => submit('login')} className="flex-1 py-3 bg-blue-500 text-white rounded-xl text-sm font-medium hover:bg-blue-600 transition">登录</button>
-          <button onClick={() => submit('register')} className="flex-1 py-3 bg-gray-200 text-gray-700 rounded-xl text-sm font-medium hover:bg-gray-300 transition">注册</button>
-        </div>
+        {error && <p className="text-red-400 text-xs mb-3 text-center">{error}</p>}
+        <button onClick={() => submit('login')} className="w-full py-3 bg-[#07c160] text-white rounded-md text-sm font-medium hover:bg-[#06ae56] transition mb-3">登录</button>
+        <button onClick={() => submit('register')} className="w-full py-3 bg-transparent text-gray-400 border border-gray-700 rounded-md text-sm hover:border-gray-500 transition">注册</button>
       </div>
     </div>
   )

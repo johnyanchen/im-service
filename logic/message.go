@@ -63,6 +63,37 @@ func (s *Server) CreateDM(ctx context.Context, req *pb.CreateDMRequest) (*pb.Cre
 	return &pb.CreateDMResponse{ConversationId: convID}, nil
 }
 
+func (s *Server) GetMessages(ctx context.Context, req *pb.GetMessagesRequest) (*pb.GetMessagesResponse, error) {
+	uid, err := s.parseToken(req.Token)
+	if err != nil {
+		return nil, err
+	}
+	ok, err := s.db.IsMember(ctx, req.ConversationId, uid)
+	if err != nil || !ok {
+		return nil, fmt.Errorf("not a member of this conversation")
+	}
+	limit := int(req.Limit)
+	if limit <= 0 {
+		limit = 30
+	}
+	msgs, err := s.db.GetMessagesBefore(ctx, req.ConversationId, req.BeforeId, limit)
+	if err != nil {
+		return nil, err
+	}
+	resp := &pb.GetMessagesResponse{}
+	for _, m := range msgs {
+		resp.Messages = append(resp.Messages, &pb.MessageItem{
+			Id:             m.ID,
+			ConversationId: m.ConversationID,
+			FromId:         m.FromID,
+			FromUsername:   m.FromUsername,
+			Content:        m.Content,
+			CreatedAt:      m.CreatedAt.UnixMilli(),
+		})
+	}
+	return resp, nil
+}
+
 func (s *Server) CreateGroup(ctx context.Context, req *pb.CreateGroupRequest) (*pb.CreateGroupResponse, error) {
 	uid, err := s.parseToken(req.Token)
 	if err != nil {

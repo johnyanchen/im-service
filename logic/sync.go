@@ -33,19 +33,6 @@ func (s *Server) Sync(ctx context.Context, req *pb.SyncRequest) (*pb.SyncRespons
 			LastMsgContent: uc.LastMsgContent,
 			LastMsgFrom:    uc.LastMsgFrom,
 		})
-		msgs, err := s.db.GetMessagesSince(ctx, uc.ConversationID, uc.LastMsgID-50, 50)
-		if err == nil {
-			for _, m := range msgs {
-				resp.Messages = append(resp.Messages, &pb.MessageItem{
-					Id:             m.ID,
-					ConversationId: m.ConversationID,
-					FromId:         m.FromID,
-					FromUsername:   m.FromUsername,
-					Content:        m.Content,
-					CreatedAt:      m.CreatedAt.UnixMilli(),
-				})
-			}
-		}
 	}
 	return resp, nil
 }

@@ -1685,27 +1685,28 @@ func (x *ListFriendRequestsResponse) GetRequests() []*FriendRequestItem {
 	return nil
 }
 
-type GetInviteCodeRequest struct {
+type SearchUsersRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Token         string                 `protobuf:"bytes,1,opt,name=token,proto3" json:"token,omitempty"`
+	Keyword       string                 `protobuf:"bytes,2,opt,name=keyword,proto3" json:"keyword,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
-func (x *GetInviteCodeRequest) Reset() {
-	*x = GetInviteCodeRequest{}
+func (x *SearchUsersRequest) Reset() {
+	*x = SearchUsersRequest{}
 	mi := &file_proto_im_proto_msgTypes[32]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
 
-func (x *GetInviteCodeRequest) String() string {
+func (x *SearchUsersRequest) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*GetInviteCodeRequest) ProtoMessage() {}
+func (*SearchUsersRequest) ProtoMessage() {}
 
-func (x *GetInviteCodeRequest) ProtoReflect() protoreflect.Message {
+func (x *SearchUsersRequest) ProtoReflect() protoreflect.Message {
 	mi := &file_proto_im_proto_msgTypes[32]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -1717,39 +1718,46 @@ func (x *GetInviteCodeRequest) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use GetInviteCodeRequest.ProtoReflect.Descriptor instead.
-func (*GetInviteCodeRequest) Descriptor() ([]byte, []int) {
+// Deprecated: Use SearchUsersRequest.ProtoReflect.Descriptor instead.
+func (*SearchUsersRequest) Descriptor() ([]byte, []int) {
 	return file_proto_im_proto_rawDescGZIP(), []int{32}
 }
 
-func (x *GetInviteCodeRequest) GetToken() string {
+func (x *SearchUsersRequest) GetToken() string {
 	if x != nil {
 		return x.Token
 	}
 	return ""
 }
 
-type GetInviteCodeResponse struct {
+func (x *SearchUsersRequest) GetKeyword() string {
+	if x != nil {
+		return x.Keyword
+	}
+	return ""
+}
+
+type SearchUsersResponse struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	Code          string                 `protobuf:"bytes,1,opt,name=code,proto3" json:"code,omitempty"`
+	Users         []*UserItem            `protobuf:"bytes,1,rep,name=users,proto3" json:"users,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
-func (x *GetInviteCodeResponse) Reset() {
-	*x = GetInviteCodeResponse{}
+func (x *SearchUsersResponse) Reset() {
+	*x = SearchUsersResponse{}
 	mi := &file_proto_im_proto_msgTypes[33]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
 
-func (x *GetInviteCodeResponse) String() string {
+func (x *SearchUsersResponse) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*GetInviteCodeResponse) ProtoMessage() {}
+func (*SearchUsersResponse) ProtoMessage() {}
 
-func (x *GetInviteCodeResponse) ProtoReflect() protoreflect.Message {
+func (x *SearchUsersResponse) ProtoReflect() protoreflect.Message {
 	mi := &file_proto_im_proto_msgTypes[33]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -1761,222 +1769,14 @@ func (x *GetInviteCodeResponse) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use GetInviteCodeResponse.ProtoReflect.Descriptor instead.
-func (*GetInviteCodeResponse) Descriptor() ([]byte, []int) {
+// Deprecated: Use SearchUsersResponse.ProtoReflect.Descriptor instead.
+func (*SearchUsersResponse) Descriptor() ([]byte, []int) {
 	return file_proto_im_proto_rawDescGZIP(), []int{33}
 }
 
-func (x *GetInviteCodeResponse) GetCode() string {
+func (x *SearchUsersResponse) GetUsers() []*UserItem {
 	if x != nil {
-		return x.Code
-	}
-	return ""
-}
-
-type AddFriendByCodeRequest struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Token         string                 `protobuf:"bytes,1,opt,name=token,proto3" json:"token,omitempty"`
-	Code          string                 `protobuf:"bytes,2,opt,name=code,proto3" json:"code,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *AddFriendByCodeRequest) Reset() {
-	*x = AddFriendByCodeRequest{}
-	mi := &file_proto_im_proto_msgTypes[34]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *AddFriendByCodeRequest) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*AddFriendByCodeRequest) ProtoMessage() {}
-
-func (x *AddFriendByCodeRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_im_proto_msgTypes[34]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use AddFriendByCodeRequest.ProtoReflect.Descriptor instead.
-func (*AddFriendByCodeRequest) Descriptor() ([]byte, []int) {
-	return file_proto_im_proto_rawDescGZIP(), []int{34}
-}
-
-func (x *AddFriendByCodeRequest) GetToken() string {
-	if x != nil {
-		return x.Token
-	}
-	return ""
-}
-
-func (x *AddFriendByCodeRequest) GetCode() string {
-	if x != nil {
-		return x.Code
-	}
-	return ""
-}
-
-type AddFriendByCodeResponse struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Username      string                 `protobuf:"bytes,1,opt,name=username,proto3" json:"username,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *AddFriendByCodeResponse) Reset() {
-	*x = AddFriendByCodeResponse{}
-	mi := &file_proto_im_proto_msgTypes[35]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *AddFriendByCodeResponse) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*AddFriendByCodeResponse) ProtoMessage() {}
-
-func (x *AddFriendByCodeResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_im_proto_msgTypes[35]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use AddFriendByCodeResponse.ProtoReflect.Descriptor instead.
-func (*AddFriendByCodeResponse) Descriptor() ([]byte, []int) {
-	return file_proto_im_proto_rawDescGZIP(), []int{35}
-}
-
-func (x *AddFriendByCodeResponse) GetUsername() string {
-	if x != nil {
-		return x.Username
-	}
-	return ""
-}
-
-type GetMessagesRequest struct {
-	state          protoimpl.MessageState `protogen:"open.v1"`
-	Token          string                 `protobuf:"bytes,1,opt,name=token,proto3" json:"token,omitempty"`
-	ConversationId int64                  `protobuf:"varint,2,opt,name=conversation_id,json=conversationId,proto3" json:"conversation_id,omitempty"`
-	BeforeId       int64                  `protobuf:"varint,3,opt,name=before_id,json=beforeId,proto3" json:"before_id,omitempty"`
-	Limit          int32                  `protobuf:"varint,4,opt,name=limit,proto3" json:"limit,omitempty"`
-	unknownFields  protoimpl.UnknownFields
-	sizeCache      protoimpl.SizeCache
-}
-
-func (x *GetMessagesRequest) Reset() {
-	*x = GetMessagesRequest{}
-	mi := &file_proto_im_proto_msgTypes[36]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *GetMessagesRequest) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*GetMessagesRequest) ProtoMessage() {}
-
-func (x *GetMessagesRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_im_proto_msgTypes[36]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use GetMessagesRequest.ProtoReflect.Descriptor instead.
-func (*GetMessagesRequest) Descriptor() ([]byte, []int) {
-	return file_proto_im_proto_rawDescGZIP(), []int{36}
-}
-
-func (x *GetMessagesRequest) GetToken() string {
-	if x != nil {
-		return x.Token
-	}
-	return ""
-}
-
-func (x *GetMessagesRequest) GetConversationId() int64 {
-	if x != nil {
-		return x.ConversationId
-	}
-	return 0
-}
-
-func (x *GetMessagesRequest) GetBeforeId() int64 {
-	if x != nil {
-		return x.BeforeId
-	}
-	return 0
-}
-
-func (x *GetMessagesRequest) GetLimit() int32 {
-	if x != nil {
-		return x.Limit
-	}
-	return 0
-}
-
-type GetMessagesResponse struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Messages      []*MessageItem         `protobuf:"bytes,1,rep,name=messages,proto3" json:"messages,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *GetMessagesResponse) Reset() {
-	*x = GetMessagesResponse{}
-	mi := &file_proto_im_proto_msgTypes[37]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *GetMessagesResponse) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*GetMessagesResponse) ProtoMessage() {}
-
-func (x *GetMessagesResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_im_proto_msgTypes[37]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use GetMessagesResponse.ProtoReflect.Descriptor instead.
-func (*GetMessagesResponse) Descriptor() ([]byte, []int) {
-	return file_proto_im_proto_rawDescGZIP(), []int{37}
-}
-
-func (x *GetMessagesResponse) GetMessages() []*MessageItem {
-	if x != nil {
-		return x.Messages
+		return x.Users
 	}
 	return nil
 }
@@ -2089,23 +1889,12 @@ const file_proto_im_proto_rawDesc = "" +
 	"\x19ListFriendRequestsRequest\x12\x14\n" +
 	"\x05token\x18\x01 \x01(\tR\x05token\"O\n" +
 	"\x1aListFriendRequestsResponse\x121\n" +
-	"\brequests\x18\x01 \x03(\v2\x15.im.FriendRequestItemR\brequests\",\n" +
-	"\x14GetInviteCodeRequest\x12\x14\n" +
-	"\x05token\x18\x01 \x01(\tR\x05token\"+\n" +
-	"\x15GetInviteCodeResponse\x12\x12\n" +
-	"\x04code\x18\x01 \x01(\tR\x04code\"B\n" +
-	"\x16AddFriendByCodeRequest\x12\x14\n" +
-	"\x05token\x18\x01 \x01(\tR\x05token\x12\x12\n" +
-	"\x04code\x18\x02 \x01(\tR\x04code\"5\n" +
-	"\x17AddFriendByCodeResponse\x12\x1a\n" +
-	"\busername\x18\x01 \x01(\tR\busername\"\x86\x01\n" +
-	"\x12GetMessagesRequest\x12\x14\n" +
-	"\x05token\x18\x01 \x01(\tR\x05token\x12'\n" +
-	"\x0fconversation_id\x18\x02 \x01(\x03R\x0econversationId\x12\x1b\n" +
-	"\tbefore_id\x18\x03 \x01(\x03R\bbeforeId\x12\x14\n" +
-	"\x05limit\x18\x04 \x01(\x05R\x05limit\"B\n" +
-	"\x13GetMessagesResponse\x12+\n" +
-	"\bmessages\x18\x01 \x03(\v2\x0f.im.MessageItemR\bmessages2\x91\b\n" +
+	"\brequests\x18\x01 \x03(\v2\x15.im.FriendRequestItemR\brequests\"D\n" +
+	"\x12SearchUsersRequest\x12\x14\n" +
+	"\x05token\x18\x01 \x01(\tR\x05token\x12\x18\n" +
+	"\akeyword\x18\x02 \x01(\tR\akeyword\"9\n" +
+	"\x13SearchUsersResponse\x12\"\n" +
+	"\x05users\x18\x01 \x03(\v2\f.im.UserItemR\x05users2\xb5\x06\n" +
 	"\fLogicService\x12,\n" +
 	"\x05Login\x12\x10.im.LoginRequest\x1a\x11.im.LoginResponse\x125\n" +
 	"\bRegister\x12\x13.im.RegisterRequest\x1a\x14.im.RegisterResponse\x12>\n" +
@@ -2118,11 +1907,8 @@ const file_proto_im_proto_rawDesc = "" +
 	"\x11SendFriendRequest\x12\x18.im.SendFriendRequestReq\x1a\x19.im.SendFriendRequestResp\x12N\n" +
 	"\x13HandleFriendRequest\x12\x1a.im.HandleFriendRequestReq\x1a\x1b.im.HandleFriendRequestResp\x12>\n" +
 	"\vListFriends\x12\x16.im.ListFriendsRequest\x1a\x17.im.ListFriendsResponse\x12S\n" +
-	"\x12ListFriendRequests\x12\x1d.im.ListFriendRequestsRequest\x1a\x1e.im.ListFriendRequestsResponse\x12D\n" +
-	"\rGetInviteCode\x12\x18.im.GetInviteCodeRequest\x1a\x19.im.GetInviteCodeResponse\x12H\n" +
-	"\x11RefreshInviteCode\x12\x18.im.GetInviteCodeRequest\x1a\x19.im.GetInviteCodeResponse\x12J\n" +
-	"\x0fAddFriendByCode\x12\x1a.im.AddFriendByCodeRequest\x1a\x1b.im.AddFriendByCodeResponse\x12>\n" +
-	"\vGetMessages\x12\x16.im.GetMessagesRequest\x1a\x17.im.GetMessagesResponse2f\n" +
+	"\x12ListFriendRequests\x12\x1d.im.ListFriendRequestsRequest\x1a\x1e.im.ListFriendRequestsResponse\x12>\n" +
+	"\vSearchUsers\x12\x16.im.SearchUsersRequest\x1a\x17.im.SearchUsersResponse2f\n" +
 	"\x0eGatewayService\x12)\n" +
 	"\x04Push\x12\x0f.im.PushRequest\x1a\x10.im.PushResponse\x12)\n" +
 	"\x04Kick\x12\x0f.im.KickRequest\x1a\x10.im.KickResponseB\x12Z\x10im-service/protob\x06proto3"
@@ -2139,7 +1925,7 @@ func file_proto_im_proto_rawDescGZIP() []byte {
 	return file_proto_im_proto_rawDescData
 }
 
-var file_proto_im_proto_msgTypes = make([]protoimpl.MessageInfo, 38)
+var file_proto_im_proto_msgTypes = make([]protoimpl.MessageInfo, 34)
 var file_proto_im_proto_goTypes = []any{
 	(*SendMessageRequest)(nil),         // 0: im.SendMessageRequest
 	(*SendMessageResponse)(nil),        // 1: im.SendMessageResponse
@@ -2173,12 +1959,8 @@ var file_proto_im_proto_goTypes = []any{
 	(*FriendRequestItem)(nil),          // 29: im.FriendRequestItem
 	(*ListFriendRequestsRequest)(nil),  // 30: im.ListFriendRequestsRequest
 	(*ListFriendRequestsResponse)(nil), // 31: im.ListFriendRequestsResponse
-	(*GetInviteCodeRequest)(nil),       // 32: im.GetInviteCodeRequest
-	(*GetInviteCodeResponse)(nil),      // 33: im.GetInviteCodeResponse
-	(*AddFriendByCodeRequest)(nil),     // 34: im.AddFriendByCodeRequest
-	(*AddFriendByCodeResponse)(nil),    // 35: im.AddFriendByCodeResponse
-	(*GetMessagesRequest)(nil),         // 36: im.GetMessagesRequest
-	(*GetMessagesResponse)(nil),        // 37: im.GetMessagesResponse
+	(*SearchUsersRequest)(nil),         // 32: im.SearchUsersRequest
+	(*SearchUsersResponse)(nil),        // 33: im.SearchUsersResponse
 }
 var file_proto_im_proto_depIdxs = []int32{
 	3,  // 0: im.SyncResponse.conversations:type_name -> im.ConversationState
@@ -2186,7 +1968,7 @@ var file_proto_im_proto_depIdxs = []int32{
 	19, // 2: im.ListUsersResponse.users:type_name -> im.UserItem
 	19, // 3: im.ListFriendsResponse.friends:type_name -> im.UserItem
 	29, // 4: im.ListFriendRequestsResponse.requests:type_name -> im.FriendRequestItem
-	4,  // 5: im.GetMessagesResponse.messages:type_name -> im.MessageItem
+	19, // 5: im.SearchUsersResponse.users:type_name -> im.UserItem
 	6,  // 6: im.LogicService.Login:input_type -> im.LoginRequest
 	8,  // 7: im.LogicService.Register:input_type -> im.RegisterRequest
 	0,  // 8: im.LogicService.SendMessage:input_type -> im.SendMessageRequest
@@ -2199,32 +1981,26 @@ var file_proto_im_proto_depIdxs = []int32{
 	25, // 15: im.LogicService.HandleFriendRequest:input_type -> im.HandleFriendRequestReq
 	27, // 16: im.LogicService.ListFriends:input_type -> im.ListFriendsRequest
 	30, // 17: im.LogicService.ListFriendRequests:input_type -> im.ListFriendRequestsRequest
-	32, // 18: im.LogicService.GetInviteCode:input_type -> im.GetInviteCodeRequest
-	32, // 19: im.LogicService.RefreshInviteCode:input_type -> im.GetInviteCodeRequest
-	34, // 20: im.LogicService.AddFriendByCode:input_type -> im.AddFriendByCodeRequest
-	36, // 21: im.LogicService.GetMessages:input_type -> im.GetMessagesRequest
-	14, // 22: im.GatewayService.Push:input_type -> im.PushRequest
-	21, // 23: im.GatewayService.Kick:input_type -> im.KickRequest
-	7,  // 24: im.LogicService.Login:output_type -> im.LoginResponse
-	9,  // 25: im.LogicService.Register:output_type -> im.RegisterResponse
-	1,  // 26: im.LogicService.SendMessage:output_type -> im.SendMessageResponse
-	5,  // 27: im.LogicService.Sync:output_type -> im.SyncResponse
-	11, // 28: im.LogicService.CreateGroup:output_type -> im.CreateGroupResponse
-	13, // 29: im.LogicService.CreateDM:output_type -> im.CreateDMResponse
-	17, // 30: im.LogicService.MarkRead:output_type -> im.MarkReadResponse
-	20, // 31: im.LogicService.ListUsers:output_type -> im.ListUsersResponse
-	24, // 32: im.LogicService.SendFriendRequest:output_type -> im.SendFriendRequestResp
-	26, // 33: im.LogicService.HandleFriendRequest:output_type -> im.HandleFriendRequestResp
-	28, // 34: im.LogicService.ListFriends:output_type -> im.ListFriendsResponse
-	31, // 35: im.LogicService.ListFriendRequests:output_type -> im.ListFriendRequestsResponse
-	33, // 36: im.LogicService.GetInviteCode:output_type -> im.GetInviteCodeResponse
-	33, // 37: im.LogicService.RefreshInviteCode:output_type -> im.GetInviteCodeResponse
-	35, // 38: im.LogicService.AddFriendByCode:output_type -> im.AddFriendByCodeResponse
-	37, // 39: im.LogicService.GetMessages:output_type -> im.GetMessagesResponse
-	15, // 40: im.GatewayService.Push:output_type -> im.PushResponse
-	22, // 41: im.GatewayService.Kick:output_type -> im.KickResponse
-	24, // [24:42] is the sub-list for method output_type
-	6,  // [6:24] is the sub-list for method input_type
+	32, // 18: im.LogicService.SearchUsers:input_type -> im.SearchUsersRequest
+	14, // 19: im.GatewayService.Push:input_type -> im.PushRequest
+	21, // 20: im.GatewayService.Kick:input_type -> im.KickRequest
+	7,  // 21: im.LogicService.Login:output_type -> im.LoginResponse
+	9,  // 22: im.LogicService.Register:output_type -> im.RegisterResponse
+	1,  // 23: im.LogicService.SendMessage:output_type -> im.SendMessageResponse
+	5,  // 24: im.LogicService.Sync:output_type -> im.SyncResponse
+	11, // 25: im.LogicService.CreateGroup:output_type -> im.CreateGroupResponse
+	13, // 26: im.LogicService.CreateDM:output_type -> im.CreateDMResponse
+	17, // 27: im.LogicService.MarkRead:output_type -> im.MarkReadResponse
+	20, // 28: im.LogicService.ListUsers:output_type -> im.ListUsersResponse
+	24, // 29: im.LogicService.SendFriendRequest:output_type -> im.SendFriendRequestResp
+	26, // 30: im.LogicService.HandleFriendRequest:output_type -> im.HandleFriendRequestResp
+	28, // 31: im.LogicService.ListFriends:output_type -> im.ListFriendsResponse
+	31, // 32: im.LogicService.ListFriendRequests:output_type -> im.ListFriendRequestsResponse
+	33, // 33: im.LogicService.SearchUsers:output_type -> im.SearchUsersResponse
+	15, // 34: im.GatewayService.Push:output_type -> im.PushResponse
+	22, // 35: im.GatewayService.Kick:output_type -> im.KickResponse
+	21, // [21:36] is the sub-list for method output_type
+	6,  // [6:21] is the sub-list for method input_type
 	6,  // [6:6] is the sub-list for extension type_name
 	6,  // [6:6] is the sub-list for extension extendee
 	0,  // [0:6] is the sub-list for field type_name
@@ -2241,7 +2017,7 @@ func file_proto_im_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_proto_im_proto_rawDesc), len(file_proto_im_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   38,
+			NumMessages:   34,
 			NumExtensions: 0,
 			NumServices:   2,
 		},

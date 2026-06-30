@@ -17,10 +17,11 @@ export default function Chat({ auth, onLogout }) {
   const [currentConvId, setCurrentConvId] = useState(null)
   const currentConvIdRef = useRef(null)
   const [messagesByConv, setMessagesByConv] = useState({})
-  const [users, setUsers] = useState([])
   const [input, setInput] = useState('')
   const wsRef = useRef(null)
   const [online, setOnline] = useState(true)
+  const [loadingMsgs, setLoadingMsgs] = useState(false)
+  const [noMoreMsgs, setNoMoreMsgs] = useState({}) // {convId: true}
 
   const authHeaders = { 'Content-Type': 'application/json', 'Authorization': `Bearer ${auth.token}` }
 
@@ -43,23 +44,51 @@ export default function Chat({ auth, onLogout }) {
           return updated
         })
       }
-      if (data.messages) {
-        setMessagesByConv(prev => {
-          const next = { ...prev }
-          data.messages.forEach(m => {
-            const cid = m.conversationId || m.conversation_id
-            if (!next[cid]) next[cid] = []
-            if (!next[cid].find(x => x.id === m.id)) {
-              next[cid] = [...next[cid], { id: m.id, from: m.fromUsername || m.from_username,
-                fromId: m.fromId || m.from_id, content: m.content, time: m.createdAt || m.created_at }]
-            }
-          })
-          return next
-        })
-      }
     } catch (e) {
       console.error('sync failed:', e)
     }
+  }
+
+  // Load messages for a conversation (initial or load-more)
+  const loadMessages = async (convId, beforeId = 0) => {
+    setLoadingMsgs(true)
+    try {
+      let url = `/api/conversations/${convId}/messages?limit=30`
+      if (beforeId > 0) url += `&before_id=${beforeId}`
+      const res = await fetch(url, { headers: authHeaders })
+      const data = await res.json()
+      const msgs = (data.messages || []).map(m => ({
+        id: m.id, from: m.fromUsername || m.from_username,
+        fromId: m.fromId || m.from_id, content: m.content, time: m.createdAt || m.created_at
+      }))
+      if (msgs.length < 30) {
+        setNoMoreMsgs(prev => ({ ...prev, [convId]: true }))
+      }
+      setMessagesByConv(prev => {
+        const existing = prev[convId] || []
+        const existingIds = new Set(existing.map(m => m.id))
+        if (beforeId > 0) {
+          // prepend older messages
+          const newMsgs = msgs.filter(m => !existingIds.has(m.id))
+          return { ...prev, [convId]: [...newMsgs, ...existing] }
+        } else {
+          // initial load: merge with any messages already received via push
+          const pushOnly = existing.filter(m => !msgs.find(x => x.id === m.id))
+          return { ...prev, [convId]: [...msgs, ...pushOnly] }
+        }
+      })
+    } catch (e) {
+      console.error('load messages failed:', e)
+    }
+    setLoadingMsgs(false)
+  }
+
+  const loadMoreMessages = (convId) => {
+    if (loadingMsgs || noMoreMsgs[convId]) return
+    const msgs = messagesByConv[convId] || []
+    if (msgs.length === 0) return
+    const oldestId = msgs[0].id
+    loadMessages(convId, oldestId)
   }
 
   const handleMessage = useCallback((e) => {
@@ -69,7 +98,9 @@ export default function Chat({ auth, onLogout }) {
       const isSelf = msg.from_id === auth.userId
       setMessagesByConv(prev => {
         const msgs = prev[cid] ? [...prev[cid]] : []
-        msgs.push({ id: msg.message_id, from: msg.from_username, fromId: msg.from_id, content: msg.content, time: msg.created_at })
+        if (!msgs.find(m => m.id === msg.message_id)) {
+          msgs.push({ id: msg.message_id, from: msg.from_username, fromId: msg.from_id, content: msg.content, time: msg.created_at })
+        }
         return { ...prev, [cid]: msgs }
       })
       const isViewing = cid === currentConvIdRef.current
@@ -118,22 +149,15 @@ export default function Chat({ auth, onLogout }) {
   const selectConv = (id) => {
     setCurrentConvId(id)
     currentConvIdRef.current = id
-    setTab('chat')
     setConversations(prev => prev.map(c => c.conversation_id === id ? { ...c, unread_count: 0 } : c))
+    // Load messages if not already loaded
+    if (!messagesByConv[id] || messagesByConv[id].length === 0) {
+      loadMessages(id)
+    }
     const msgs = messagesByConv[id]
     if (msgs && msgs.length > 0) {
       const lastId = msgs[msgs.length - 1].id
       fetch(`/api/conversations/${id}/read`, { method: 'POST', headers: authHeaders, body: JSON.stringify({ msg_id: lastId }) })
-    }
-  }
-
-  const startChat = async (peerId) => {
-    const res = await fetch('/api/conversations/dm', { method: 'POST', headers: authHeaders, body: JSON.stringify({ peer_id: peerId }) })
-    const data = await res.json()
-    if (data.conversationId || data.conversation_id) {
-      setCurrentConvId(data.conversationId || data.conversation_id)
-      setTab('chat')
-      doSync()
     }
   }
 
@@ -146,21 +170,7 @@ export default function Chat({ auth, onLogout }) {
     const data = await res.json()
     if (data.conversationId || data.conversation_id) {
       setCurrentConvId(data.conversationId || data.conversation_id)
-      setTab('chat')
       doSync()
-    }
-  }
-
-  const switchToContacts = async () => {
-    setTab('contacts')
-    try {
-      const res = await fetch('/api/users', {
-        headers: { 'Authorization': `Bearer ${auth.token}` },
-      })
-      const data = await res.json()
-      if (data.users) setUsers(data.users)
-    } catch (e) {
-      console.error('fetch users failed:', e)
     }
   }
 
@@ -168,78 +178,66 @@ export default function Chat({ auth, onLogout }) {
   const msgs = messagesByConv[currentConvId] || []
 
   return (
-    <div className="flex h-screen bg-gray-50">
-      <div className="w-72 border-r border-gray-200 bg-white flex flex-col h-screen">
-        {/* 顶部用户信息 */}
-        <div className="px-4 py-4 border-b border-gray-100">
-          <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-bold" style={{ background: getColor(auth.username) }}>
-              {auth.username[0]?.toUpperCase()}
-            </div>
-            <span className="text-sm font-medium text-gray-800">{auth.username}</span>
-            <span className={`w-2 h-2 rounded-full ${online ? 'bg-green-400' : 'bg-gray-300'}`}></span>
-            <button onClick={onLogout} className="ml-auto text-xs text-gray-400 hover:text-red-500 transition">退出</button>
-          </div>
+    <div className="flex h-screen">
+      {/* 最左侧导航栏 */}
+      <div className="w-14 bg-[#2e2e2e] flex flex-col items-center py-4 gap-4">
+        <div className="w-9 h-9 rounded-md flex items-center justify-center text-white text-xs font-bold" style={{ background: getColor(auth.username) }}>
+          {auth.username[0]?.toUpperCase()}
         </div>
-
-        {/* Tab 切换 */}
-        <div className="flex border-b border-gray-100">
-          <button onClick={() => setTab('chat')} className={`flex-1 py-2.5 text-xs font-medium transition ${tab === 'chat' ? 'text-blue-500 border-b-2 border-blue-500' : 'text-gray-400 hover:text-gray-600'}`}>
-            💬 会话
+        <div className="flex-1 flex flex-col items-center gap-2 mt-4">
+          <button onClick={() => setTab('chat')} className={`w-10 h-10 rounded-lg flex items-center justify-center transition ${tab === 'chat' ? 'bg-[#464646]' : 'hover:bg-[#3a3a3a]'}`} title="聊天">
+            <svg className="w-5 h-5 text-gray-300" fill="currentColor" viewBox="0 0 24 24"><path d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm0 14H6l-2 2V4h16v12z"/></svg>
           </button>
-          <button onClick={switchToContacts} className={`flex-1 py-2.5 text-xs font-medium transition ${tab === 'contacts' ? 'text-blue-500 border-b-2 border-blue-500' : 'text-gray-400 hover:text-gray-600'}`}>
-            👥 联系人
+          <button onClick={() => setTab('contacts')} className={`w-10 h-10 rounded-lg flex items-center justify-center transition ${tab === 'contacts' ? 'bg-[#464646]' : 'hover:bg-[#3a3a3a]'}`} title="通讯录">
+            <svg className="w-5 h-5 text-gray-300" fill="currentColor" viewBox="0 0 24 24"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg>
           </button>
         </div>
-
-        {/* Tab 内容 */}
-        {tab === 'chat' ? (
-          <>
-            <div className="px-4 py-2">
-              <button onClick={createGroup} className="w-full text-xs py-1.5 rounded-lg bg-gray-100 text-gray-600 hover:bg-gray-200 transition">+ 新建群聊</button>
-            </div>
-            <Sidebar
-              conversations={conversations}
-              currentConvId={currentConvId}
-              onSelect={selectConv}
-              getColor={getColor}
-            />
-          </>
-        ) : (
-          <Contacts users={users} userId={auth.userId} onStartChat={startChat} getColor={getColor} />
-        )}
+        <div className="flex flex-col items-center gap-2">
+          <span className={`w-2 h-2 rounded-full ${online ? 'bg-[#07c160]' : 'bg-gray-500'}`}></span>
+          <button onClick={onLogout} className="w-10 h-10 rounded-lg flex items-center justify-center hover:bg-[#3a3a3a] transition" title="退出">
+            <svg className="w-4 h-4 text-gray-400" fill="currentColor" viewBox="0 0 24 24"><path d="M17 7l-1.41 1.41L18.17 11H8v2h10.17l-2.58 2.58L17 17l5-5zM4 5h8V3H4c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h8v-2H4V5z"/></svg>
+          </button>
+        </div>
       </div>
 
-      {/* 右侧聊天区 */}
-      <div className="flex-1 flex flex-col">
-        {currentConv ? (
-          <>
-            <div className="px-6 py-4 border-b border-gray-200 bg-white/80 backdrop-blur-sm">
-              <h2 className="font-semibold text-gray-800">{currentConv.name}</h2>
-              <p className="text-xs text-gray-400">{currentConv.type === 'group' ? '群聊' : '私聊'}</p>
+      {/* 聊天模式 */}
+      {tab === 'chat' && (
+        <>
+          {/* 会话列表 */}
+          <div className="w-64 border-r border-[#d6d6d6] bg-[#ededed] flex flex-col">
+            <div className="px-3 py-2">
+              <button onClick={createGroup} className="w-full text-xs py-1.5 rounded-md bg-white text-gray-600 hover:bg-gray-100 transition border border-[#e0e0e0]">+ 发起群聊</button>
             </div>
-            <Messages msgs={msgs} userId={auth.userId} getColor={getColor} />
-            <div className="px-4 py-3 border-t border-gray-200 bg-white">
-              <div className="flex gap-2">
-                <input
-                  className="flex-1 px-4 py-2.5 rounded-full bg-gray-100 outline-none text-sm"
-                  placeholder="输入消息..."
-                  value={input}
-                  onChange={e => setInput(e.target.value)}
-                  onKeyDown={e => e.key === 'Enter' && sendMsg()}
-                />
-                <button onClick={sendMsg} className="px-5 py-2.5 bg-blue-500 text-white rounded-full text-sm font-medium hover:bg-blue-600 transition">
-                  发送
-                </button>
-              </div>
-            </div>
-          </>
-        ) : (
-          <div className="flex-1 flex items-center justify-center text-gray-400 text-sm">
-            选择一个会话开始聊天
+            <Sidebar conversations={conversations} currentConvId={currentConvId} onSelect={selectConv} getColor={getColor} />
           </div>
-        )}
-      </div>
+          {/* 消息区 */}
+          <div className="flex-1 flex flex-col bg-[#f0ece3]">
+            {currentConv ? (
+              <>
+                <div className="px-5 py-3 border-b border-[#d6d6d6] bg-[#ededed]">
+                  <h2 className="text-sm font-medium text-gray-800">{currentConv.name}</h2>
+                </div>
+                <Messages msgs={msgs} userId={auth.userId} getColor={getColor} onLoadMore={() => loadMoreMessages(currentConvId)} loading={loadingMsgs} noMore={noMoreMsgs[currentConvId]} />
+                <div className="px-4 py-3 border-t border-[#d6d6d6] bg-[#ededed]">
+                  <div className="flex gap-2 items-center">
+                    <input className="flex-1 px-3 py-2 rounded-md bg-white outline-none text-sm border border-[#e0e0e0] focus:border-[#07c160] transition" placeholder="输入消息..." value={input} onChange={e => setInput(e.target.value)} onKeyDown={e => e.key === 'Enter' && sendMsg()} />
+                    <button onClick={sendMsg} className="px-4 py-2 bg-[#07c160] text-white rounded-md text-sm hover:bg-[#06ae56] transition">发送</button>
+                  </div>
+                </div>
+              </>
+            ) : (
+              <div className="flex-1 flex items-center justify-center text-gray-500 text-sm bg-[#ededed]">选择一个聊天开始</div>
+            )}
+          </div>
+        </>
+      )}
+
+      {/* 联系人模式 */}
+      {tab === 'contacts' && (
+        <div className="flex-1 bg-[#ededed]">
+          <Contacts auth={auth} getColor={getColor} />
+        </div>
+      )}
     </div>
   )
 }
