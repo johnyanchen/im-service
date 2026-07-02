@@ -55,7 +55,7 @@ func (s *GatewayServer) Kick(ctx context.Context, req *pb.KickRequest) (*pb.Kick
 		conn.WriteMessage(websocket.CloseMessage,
 			websocket.FormatCloseMessage(4001, "kicked"))
 		conn.Close()
-		s.hub.Remove(req.UserId)
+		s.hub.Remove(req.UserId, conn)
 	}
 	return &pb.KickResponse{}, nil
 }
@@ -124,7 +124,7 @@ func (s *GatewayServer) handleWSUpgrade(w http.ResponseWriter, r *http.Request) 
 	if err != nil {
 		return
 	}
-	conn := &Conn{ws: wsConn}
+	conn := &Conn{id: connSeq.Add(1), ws: wsConn}
 	_, data, err := conn.ReadMessage()
 	if err != nil {
 		conn.Close()
@@ -142,11 +142,28 @@ func (s *GatewayServer) handleWSUpgrade(w http.ResponseWriter, r *http.Request) 
 		conn.Close()
 		return
 	}
-	s.kickRemote(uid)
+	myRoute := redisstore.RouteValue(s.cfg.GatewayGRPC, conn.id)
+
+	// 用分布式锁串行化同一 uid 的上线换绑：临界区内只做"读旧路由 + 写新路由 +
+	// 登记本地 Hub"这三步快操作，慢 IO（踢前任的 gRPC）放到锁外，
+	// 保证持锁时间极短。锁能从根上杜绝两条连接同时上线导致的路由/Hub 错位。
+	lockToken, ok, err := s.redis.AcquireLock(context.Background(), uid)
+	if err != nil || !ok {
+		// 抢锁失败：同一 uid 正在别处上线（极罕见）。直接断开，客户端会重连重试。
+		conn.Close()
+		return
+	}
+	oldRoute, _ := s.redis.GetRoute(context.Background(), uid)
+	s.redis.SetRoute(context.Background(), uid, myRoute)
 	s.hub.Add(uid, conn)
-	s.redis.SetRoute(context.Background(), uid, s.cfg.GatewayGRPC)
+	s.redis.ReleaseLock(context.Background(), uid, lockToken)
+
+	// 锁外踢前任：慢 IO 不占锁。旧路由指向别的连接才需要踢。
+	if oldRoute != "" && oldRoute != myRoute {
+		s.kickByRoute(uid, oldRoute)
+	}
 	log.Printf("用户 %d 已连接", uid)
-	s.handleWS(conn, uid)
+	s.handleWS(conn, uid, myRoute)
 }
 
 func parseUIDFromToken(tokenStr, secret string) int64 {
@@ -178,9 +195,16 @@ func (s *GatewayServer) StartGRPC() {
 	go grpcServer.Serve(lis)
 }
 
-func (s *GatewayServer) kickRemote(uid int64) {
-	oldAddr, err := s.redis.GetRoute(context.Background(), uid)
-	if err != nil || oldAddr == "" || oldAddr == s.cfg.GatewayGRPC {
+// kickByRoute 踢掉 oldRoute 指向的旧连接。若旧路由就在本机则走本地 Kick，
+// 否则 gRPC 到对应网关。oldRoute 形如 "gatewayAddr#connID"。
+func (s *GatewayServer) kickByRoute(uid int64, oldRoute string) {
+	oldAddr := redisstore.GatewayAddrOf(oldRoute)
+	if oldAddr == "" {
+		return
+	}
+	if oldAddr == s.cfg.GatewayGRPC {
+		// 旧连接在本机：本机新旧连接的换绑已由 hub.Add 在锁内完成
+		// （踢掉旧 conn、装入新 conn），这里无需再动，否则可能误踢新连接。
 		return
 	}
 	conn, err := grpc.NewClient(oldAddr, grpc.WithTransportCredentials(insecure.NewCredentials()))

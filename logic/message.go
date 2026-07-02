@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"im-service/pkg/kafka"
 	pb "im-service/proto"
@@ -33,6 +34,7 @@ func (s *Server) SendMessage(ctx context.Context, req *pb.SendMessageRequest) (*
 	}
 
 	_ = s.producer.PublishFanout(&kafka.FanoutEvent{
+		EventType:        kafka.EventNewMessage,
 		MessageID:        msg.ID,
 		ConversationID:   msg.ConversationID,
 		ConversationType: convType,
@@ -60,6 +62,29 @@ func (s *Server) CreateDM(ctx context.Context, req *pb.CreateDMRequest) (*pb.Cre
 	}
 	_ = s.db.AddConversationMember(ctx, convID, uid)
 	_ = s.db.AddConversationMember(ctx, convID, req.PeerId)
+	// 为双方插入会话视图行，DM 的会话名对各自显示为「对方用户名」
+	me, _ := s.db.GetUserByID(ctx, uid)
+	peer, _ := s.db.GetUserByID(ctx, req.PeerId)
+	peerName, myName := "", ""
+	if peer != nil {
+		peerName = peer.Username
+		_ = s.db.SeedUserConversation(ctx, uid, convID, "dm", peerName)
+	}
+	if me != nil {
+		myName = me.Username
+		_ = s.db.SeedUserConversation(ctx, req.PeerId, convID, "dm", myName)
+	}
+	// 实时推送新会话给在线成员（接收方侧 fanout 会把会话名翻成发起者名）
+	_ = s.producer.PublishFanout(&kafka.FanoutEvent{
+		EventType:        kafka.EventConvCreated,
+		ConversationID:   convID,
+		ConversationType: "dm",
+		ConversationName: peerName, // 发起者视角：对方名
+		FromID:           uid,
+		FromUsername:     myName,
+		CreatedAt:        time.Now().UnixMilli(),
+		Members:          []int64{uid, req.PeerId},
+	})
 	return &pb.CreateDMResponse{ConversationId: convID}, nil
 }
 
@@ -111,7 +136,27 @@ func (s *Server) CreateGroup(ctx context.Context, req *pb.CreateGroupRequest) (*
 	for _, mid := range req.MemberIds {
 		_ = s.db.AddConversationMember(ctx, convID, mid)
 	}
+	// 为所有成员插入会话视图行，使新群立即出现在各自的会话列表里
+	_ = s.db.SeedUserConversation(ctx, uid, convID, "group", req.Name)
+	for _, mid := range req.MemberIds {
+		_ = s.db.SeedUserConversation(ctx, mid, convID, "group", req.Name)
+	}
 	allMembers := append([]int64{uid}, req.MemberIds...)
 	_ = s.redis.SetMembers(ctx, convID, allMembers)
+	// 实时推送新群给所有在线成员，立即出现在会话列表
+	var creatorName string
+	if me, _ := s.db.GetUserByID(ctx, uid); me != nil {
+		creatorName = me.Username
+	}
+	_ = s.producer.PublishFanout(&kafka.FanoutEvent{
+		EventType:        kafka.EventConvCreated,
+		ConversationID:   convID,
+		ConversationType: "group",
+		ConversationName: req.Name,
+		FromID:           uid,
+		FromUsername:     creatorName,
+		CreatedAt:        time.Now().UnixMilli(),
+		Members:          allMembers,
+	})
 	return &pb.CreateGroupResponse{GroupId: groupID, ConversationId: convID}, nil
 }

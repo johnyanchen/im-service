@@ -51,6 +51,16 @@ func (db *DB) GetUserByUsername(ctx context.Context, username string) (*User, er
 	return u, nil
 }
 
+func (db *DB) GetUserByID(ctx context.Context, id int64) (*User, error) {
+	u := &User{}
+	err := db.Pool.QueryRow(ctx,
+		"SELECT id, username FROM users WHERE id=$1", id).Scan(&u.ID, &u.Username)
+	if err != nil {
+		return nil, err
+	}
+	return u, nil
+}
+
 func (db *DB) ListUsers(ctx context.Context) ([]*User, error) {
 	rows, err := db.Pool.Query(ctx, "SELECT id, username FROM users ORDER BY id")
 	if err != nil {

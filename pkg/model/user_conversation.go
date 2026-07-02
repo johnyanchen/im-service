@@ -66,6 +66,19 @@ func (db *DB) UpdateSyncTime(ctx context.Context, userID int64) error {
 	return nil
 }
 
+// SeedUserConversation 在创建会话时为成员插入一条空的会话视图行，
+// 让会话能立即出现在会话列表里（即使还没有任何消息）。
+func (db *DB) SeedUserConversation(ctx context.Context, userID, convID int64, convType, convName string) error {
+	_, err := db.Pool.Exec(ctx, `
+		INSERT INTO user_conversations(user_id, conversation_id, last_msg_id, last_read_msg_id, last_msg_content, last_msg_from, conv_type, conv_name, updated_at)
+		VALUES($1, $2, 0, 0, '', '', $3, $4, NOW())
+		ON CONFLICT(user_id, conversation_id) DO UPDATE SET
+			conv_type = EXCLUDED.conv_type,
+			conv_name = EXCLUDED.conv_name`,
+		userID, convID, convType, convName)
+	return err
+}
+
 func (db *DB) GetLastSyncAt(ctx context.Context, userID int64) (time.Time, error) {
 	return time.Time{}, nil
 }

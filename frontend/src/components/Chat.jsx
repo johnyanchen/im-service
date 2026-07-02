@@ -2,6 +2,7 @@ import { useState, useEffect, useRef, useCallback } from 'react'
 import Sidebar from './Sidebar'
 import Contacts from './Contacts'
 import Messages from './Messages'
+import CreateGroupModal from './CreateGroupModal'
 
 const COLORS = ['#FF6B6B','#4ECDC4','#45B7D1','#96CEB4','#FFEAA7','#DDA0DD','#98D8C8','#F7DC6F','#BB8FCE','#85C1E9']
 
@@ -22,6 +23,7 @@ export default function Chat({ auth, onLogout }) {
   const [online, setOnline] = useState(true)
   const [loadingMsgs, setLoadingMsgs] = useState(false)
   const [noMoreMsgs, setNoMoreMsgs] = useState({}) // {convId: true}
+  const [showCreateGroup, setShowCreateGroup] = useState(false)
 
   const authHeaders = { 'Content-Type': 'application/json', 'Authorization': `Bearer ${auth.token}` }
 
@@ -93,6 +95,19 @@ export default function Chat({ auth, onLogout }) {
 
   const handleMessage = useCallback((e) => {
     const msg = JSON.parse(e.data)
+    if (msg.type === 'conv_created') {
+      const cid = msg.conversation_id
+      setConversations(prev => {
+        if (prev.some(x => x.conversation_id === cid)) return prev
+        return [...prev, {
+          conversation_id: cid, unread_count: 0,
+          name: msg.conversation_name || `会话 #${cid}`,
+          type: msg.conversation_type || 'dm',
+          last_msg_content: '', last_msg_from: '',
+        }]
+      })
+      return
+    }
     if (msg.type === 'new_message') {
       const cid = msg.conversation_id
       const isSelf = msg.from_id === auth.userId
@@ -161,17 +176,25 @@ export default function Chat({ auth, onLogout }) {
     }
   }
 
-  const createGroup = async () => {
-    const name = prompt('群组名称:')
-    if (!name) return
-    const ids = prompt('成员 ID（逗号分隔）:')
-    if (!ids) return
-    const res = await fetch('/api/conversations/group', { method: 'POST', headers: authHeaders, body: JSON.stringify({ name, member_ids: ids.split(',').map(Number) }) })
-    const data = await res.json()
-    if (data.conversationId || data.conversation_id) {
-      setCurrentConvId(data.conversationId || data.conversation_id)
-      doSync()
+  const handleGroupCreated = (cid) => {
+    setShowCreateGroup(false)
+    if (cid) {
+      // 会话本身会通过 WS 的 conv_created 事件推下来加入列表；
+      // 这里只负责把创建者直接切到新会话。
+      setCurrentConvId(cid)
+      currentConvIdRef.current = cid
     }
+  }
+
+  const startChatWith = (cid, peerName) => {
+    if (!cid) return
+    // 若列表里还没有（WS 事件可能稍后到），先乐观插入一条，避免空窗
+    setConversations(prev => {
+      if (prev.some(c => c.conversation_id === cid)) return prev
+      return [...prev, { conversation_id: cid, unread_count: 0, name: peerName || `会话 #${cid}`, type: 'dm', last_msg_content: '', last_msg_from: '' }]
+    })
+    setTab('chat')
+    selectConv(cid)
   }
 
   const currentConv = conversations.find(c => c.conversation_id === currentConvId)
@@ -181,8 +204,15 @@ export default function Chat({ auth, onLogout }) {
     <div className="flex h-screen">
       {/* 最左侧导航栏 */}
       <div className="w-14 bg-[#2e2e2e] flex flex-col items-center py-4 gap-4">
-        <div className="w-9 h-9 rounded-md flex items-center justify-center text-white text-xs font-bold" style={{ background: getColor(auth.username) }}>
-          {auth.username[0]?.toUpperCase()}
+        <div className="flex flex-col items-center gap-1 group relative">
+          <div className="w-9 h-9 rounded-md flex items-center justify-center text-white text-xs font-bold" style={{ background: getColor(auth.username) }}>
+            {auth.username[0]?.toUpperCase()}
+          </div>
+          <span className="text-[10px] text-gray-400 max-w-[48px] truncate leading-tight" title={auth.username}>{auth.username}</span>
+          {/* hover 显示完整用户名 */}
+          <div className="absolute left-12 top-0 z-50 hidden group-hover:block whitespace-nowrap bg-[#1a1a1a] text-white text-xs px-2 py-1 rounded shadow-lg">
+            {auth.username}
+          </div>
         </div>
         <div className="flex-1 flex flex-col items-center gap-2 mt-4">
           <button onClick={() => setTab('chat')} className={`w-10 h-10 rounded-lg flex items-center justify-center transition ${tab === 'chat' ? 'bg-[#464646]' : 'hover:bg-[#3a3a3a]'}`} title="聊天">
@@ -206,7 +236,7 @@ export default function Chat({ auth, onLogout }) {
           {/* 会话列表 */}
           <div className="w-64 border-r border-[#d6d6d6] bg-[#ededed] flex flex-col">
             <div className="px-3 py-2">
-              <button onClick={createGroup} className="w-full text-xs py-1.5 rounded-md bg-white text-gray-600 hover:bg-gray-100 transition border border-[#e0e0e0]">+ 发起群聊</button>
+              <button onClick={() => setShowCreateGroup(true)} className="w-full text-xs py-1.5 rounded-md bg-white text-gray-600 hover:bg-gray-100 transition border border-[#e0e0e0]">+ 发起群聊</button>
             </div>
             <Sidebar conversations={conversations} currentConvId={currentConvId} onSelect={selectConv} getColor={getColor} />
           </div>
@@ -235,8 +265,18 @@ export default function Chat({ auth, onLogout }) {
       {/* 联系人模式 */}
       {tab === 'contacts' && (
         <div className="flex-1 bg-[#ededed]">
-          <Contacts auth={auth} getColor={getColor} />
+          <Contacts auth={auth} getColor={getColor} onStartChat={startChatWith} />
         </div>
+      )}
+
+      {/* 发起群聊弹窗 */}
+      {showCreateGroup && (
+        <CreateGroupModal
+          auth={auth}
+          getColor={getColor}
+          onClose={() => setShowCreateGroup(false)}
+          onCreate={handleGroupCreated}
+        />
       )}
     </div>
   )

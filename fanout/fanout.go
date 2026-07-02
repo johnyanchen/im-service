@@ -31,6 +31,10 @@ func NewFanoutProcessor(db *model.DB, redis *redisstore.Store) *FanoutProcessor 
 }
 
 func (f *FanoutProcessor) Handle(ctx context.Context, event *kafka.FanoutEvent) error {
+	if event.EventType == kafka.EventConvCreated {
+		return f.handleConvCreated(ctx, event)
+	}
+
 	members, err := f.redis.GetMembers(ctx, event.ConversationID)
 	if err == redis.Nil {
 		members, err = f.db.GetConversationMembers(ctx, event.ConversationID)
@@ -69,7 +73,7 @@ func (f *FanoutProcessor) Handle(ctx context.Context, event *kafka.FanoutEvent) 
 			if err != nil {
 				return
 			}
-			client := f.getGatewayClient(route)
+			client := f.getGatewayClient(redisstore.GatewayAddrOf(route))
 			if client == nil {
 				return
 			}
@@ -94,8 +98,61 @@ func (f *FanoutProcessor) Handle(ctx context.Context, event *kafka.FanoutEvent) 
 	return nil
 }
 
-func (f *FanoutProcessor) getGatewayClient(addr string) pb.GatewayServiceClient {
-	f.mu.RLock()
+// handleConvCreated 把"新会话"事件实时推给所有在线成员，
+// 让会话立即出现在他们的会话列表里，无需客户端再次 sync。
+// 会话视图行已由 Logic 在建会话时 seed，这里只负责推送。
+func (f *FanoutProcessor) handleConvCreated(ctx context.Context, event *kafka.FanoutEvent) error {
+	members := event.Members
+	if len(members) == 0 {
+		var err error
+		members, err = f.db.GetConversationMembers(ctx, event.ConversationID)
+		if err != nil {
+			return err
+		}
+	}
+	// 刷新成员缓存，保证随后的消息 fanout 能命中
+	_ = f.redis.SetMembers(ctx, event.ConversationID, members)
+
+	sem := make(chan struct{}, 50)
+	var wg sync.WaitGroup
+	for _, uid := range members {
+		wg.Add(1)
+		sem <- struct{}{}
+		go func(userID int64) {
+			defer func() { <-sem; wg.Done() }()
+
+			// 单聊：每个成员看到的会话名是"对方"。Logic 已把发起者侧算成对端名，
+			// 这里给非发起者推发起者的名字。群聊则统一用群名。
+			convName := event.ConversationName
+			if event.ConversationType == "dm" && userID != event.FromID {
+				convName = event.FromUsername
+			}
+
+			route, err := f.redis.GetRoute(ctx, userID)
+			if err != nil {
+				return // 不在线，靠下次 sync 兜底
+			}
+			client := f.getGatewayClient(redisstore.GatewayAddrOf(route))
+			if client == nil {
+				return
+			}
+			payload, _ := json.Marshal(map[string]interface{}{
+				"type":              "conv_created",
+				"conversation_id":   event.ConversationID,
+				"conversation_type": event.ConversationType,
+				"conversation_name": convName,
+				"created_at":        event.CreatedAt,
+			})
+			if _, err := client.Push(ctx, &pb.PushRequest{UserId: userID, Payload: payload}); err != nil {
+				log.Printf("fanout: push conv_created to %d via %s failed: %v", userID, route, err)
+			}
+		}(uid)
+	}
+	wg.Wait()
+	return nil
+}
+
+func (f *FanoutProcessor) getGatewayClient(addr string) pb.GatewayServiceClient {	f.mu.RLock()
 	c, ok := f.gateways[addr]
 	f.mu.RUnlock()
 	if ok {

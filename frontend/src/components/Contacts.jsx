@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 
-export default function Contacts({ auth, getColor }) {
+export default function Contacts({ auth, getColor, onStartChat }) {
   const [friends, setFriends] = useState([])
   const [requests, setRequests] = useState([])
   const [myCode, setMyCode] = useState('')
@@ -55,6 +55,13 @@ export default function Contacts({ auth, getColor }) {
     await fetch('/api/friends/handle', { method: 'POST', headers, body: JSON.stringify({ request_id: id, accept }) })
     loadRequests()
     if (accept) loadFriends()
+  }
+
+  const startChat = async (friend) => {
+    const res = await fetch('/api/conversations/dm', { method: 'POST', headers, body: JSON.stringify({ peer_id: friend.id }) })
+    const data = await res.json()
+    const cid = data.conversationId || data.conversation_id
+    if (cid && onStartChat) onStartChat(cid, friend.username)
   }
 
   return (
@@ -139,6 +146,12 @@ export default function Contacts({ auth, getColor }) {
             </div>
             <h3 className="text-lg font-medium text-gray-900">{selected.data.username}</h3>
             <p className="text-sm text-gray-500 mt-2">已是好友</p>
+            <button
+              onClick={() => startChat(selected.data)}
+              className="mt-5 px-6 py-2 bg-[#07c160] text-white rounded-md text-sm hover:bg-[#06ae56] transition flex items-center gap-2">
+              <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><path d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm0 14H6l-2 2V4h16v12z"/></svg>
+              发消息
+            </button>
           </div>
         )}
 

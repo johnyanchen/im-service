@@ -16,15 +16,17 @@ const (
 	renewPeriod = 2 * time.Minute
 )
 
-func (s *GatewayServer) handleWS(conn *Conn, userID int64) {
+func (s *GatewayServer) handleWS(conn *Conn, userID int64, myRoute string) {
 	ticker := time.NewTicker(renewPeriod)
 	pingTicker := time.NewTicker(pingPeriod)
+	done := make(chan struct{})
 
 	defer func() {
 		ticker.Stop()
 		pingTicker.Stop()
-		s.hub.Remove(userID)
-		s.redis.DelRoute(context.Background(), userID)
+		close(done) // 通知续期/心跳 goroutine 退出，避免泄漏
+		s.hub.Remove(userID, conn)
+		s.redis.DelRouteIf(context.Background(), userID, myRoute)
 		conn.Close()
 	}()
 
@@ -38,15 +40,11 @@ func (s *GatewayServer) handleWS(conn *Conn, userID int64) {
 	go func() {
 		for {
 			select {
-			case _, ok := <-ticker.C:
-				if !ok {
-					return
-				}
-				s.redis.SetRoute(context.Background(), userID, s.cfg.GatewayGRPC)
-			case _, ok := <-pingTicker.C:
-				if !ok {
-					return
-				}
+			case <-done: // 唯一可靠的退出路径
+				return
+			case <-ticker.C:
+				s.redis.SetRoute(context.Background(), userID, myRoute)
+			case <-pingTicker.C:
 				conn.mu.Lock()
 				conn.ws.SetWriteDeadline(time.Now().Add(10 * time.Second))
 				err := conn.ws.WriteMessage(websocket.PingMessage, nil)

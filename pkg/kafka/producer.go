@@ -8,7 +8,14 @@ import (
 
 const TopicMessageFanout = "message_fanout"
 
+// FanoutEvent 的事件类型。空字符串视为 new_message（向后兼容旧消息）。
+const (
+	EventNewMessage  = "new_message"
+	EventConvCreated = "conv_created"
+)
+
 type FanoutEvent struct {
+	EventType        string `json:"event_type"`
 	MessageID        int64  `json:"message_id"`
 	ConversationID   int64  `json:"conversation_id"`
 	ConversationType string `json:"conversation_type"`
@@ -17,6 +24,8 @@ type FanoutEvent struct {
 	FromUsername     string `json:"from_username"`
 	Content          string `json:"content"`
 	CreatedAt        int64  `json:"created_at"`
+	// Members 仅 conv_created 使用：新会话的成员，避免依赖 Redis 成员缓存的时序。
+	Members []int64 `json:"members,omitempty"`
 }
 
 type Producer struct {
