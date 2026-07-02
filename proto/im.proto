@@ -6,11 +6,13 @@ message SendMessageRequest {
   string token = 1;
   int64 conversation_id = 2;
   string content = 3;
+  int64 peer_id = 4; // 单聊首条消息：无 conversation_id 时按 peer_id 惰性建会话
 }
 
 message SendMessageResponse {
   int64 message_id = 1;
   int64 created_at = 2;
+  int64 conversation_id = 3; // 回填真实会话 id，单聊首条据此把草稿窗口换成真会话
 }
 
 message SyncRequest {

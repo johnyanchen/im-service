@@ -16,6 +16,7 @@ export default function Chat({ auth, onLogout }) {
   const [tab, setTab] = useState('chat') // 'chat' | 'contacts'
   const [conversations, setConversations] = useState([])
   const [currentConvId, setCurrentConvId] = useState(null)
+  const [currentDraftPeer, setCurrentDraftPeer] = useState(null) // 选中的草稿会话对应的 peer_id
   const currentConvIdRef = useRef(null)
   const [messagesByConv, setMessagesByConv] = useState({})
   const [input, setInput] = useState('')
@@ -156,16 +157,41 @@ export default function Chat({ auth, onLogout }) {
   }, [auth.token, handleMessage])
 
   const sendMsg = async () => {
-    if (!input.trim() || !currentConvId) return
-    await fetch('/api/messages', { method: 'POST', headers: authHeaders, body: JSON.stringify({ conversation_id: currentConvId, content: input }) })
+    if (!input.trim() || !currentConv) return
+    const text = input
     setInput('')
+    // 草稿单聊会话（cid=0）：带 peer_id 让后端惰性建会话；否则带 conversation_id
+    const body = currentConv.draft
+      ? { peer_id: currentConv.peer_id, content: text }
+      : { conversation_id: currentConv.conversation_id, content: text }
+    const res = await fetch('/api/messages', { method: 'POST', headers: authHeaders, body: JSON.stringify(body) })
+    const data = await res.json()
+    const realCid = data.conversationId || data.conversation_id
+    // 首条发完，后端回填真实 cid：把草稿窗口换成真会话
+    if (currentConv.draft && realCid) {
+      setConversations(prev => prev.map(c =>
+        (c.draft && c.peer_id === currentConv.peer_id)
+          ? { ...c, conversation_id: realCid, draft: false }
+          : c
+      ))
+      setMessagesByConv(prev => {
+        if (!prev[0]) return prev
+        const next = { ...prev, [realCid]: [...(prev[realCid] || []), ...prev[0]] }
+        delete next[0]
+        return next
+      })
+      setCurrentConvId(realCid)
+      currentConvIdRef.current = realCid
+      setCurrentDraftPeer(null)
+    }
   }
 
   const selectConv = (id) => {
     setCurrentConvId(id)
     currentConvIdRef.current = id
+    setCurrentDraftPeer(null)
     setConversations(prev => prev.map(c => c.conversation_id === id ? { ...c, unread_count: 0 } : c))
-    // Load messages if not already loaded
+    if (!id) return // 草稿会话（id=0）无历史可拉    // Load messages if not already loaded
     if (!messagesByConv[id] || messagesByConv[id].length === 0) {
       loadMessages(id)
     }
@@ -173,6 +199,17 @@ export default function Chat({ auth, onLogout }) {
     if (msgs && msgs.length > 0) {
       const lastId = msgs[msgs.length - 1].id
       fetch(`/api/conversations/${id}/read`, { method: 'POST', headers: authHeaders, body: JSON.stringify({ msg_id: lastId }) })
+    }
+  }
+
+  // Sidebar 点击：草稿会话选中 peer，真会话走 selectConv
+  const onSelectConv = (c) => {
+    if (c.draft) {
+      setCurrentConvId(0)
+      currentConvIdRef.current = 0
+      setCurrentDraftPeer(c.peer_id)
+    } else {
+      selectConv(c.conversation_id)
     }
   }
 
@@ -186,18 +223,32 @@ export default function Chat({ auth, onLogout }) {
     }
   }
 
-  const startChatWith = (cid, peerName) => {
-    if (!cid) return
-    // 若列表里还没有（WS 事件可能稍后到），先乐观插入一条，避免空窗
-    setConversations(prev => {
-      if (prev.some(c => c.conversation_id === cid)) return prev
-      return [...prev, { conversation_id: cid, unread_count: 0, name: peerName || `会话 #${cid}`, type: 'dm', last_msg_content: '', last_msg_from: '' }]
-    })
+  const startChatWith = (cid, peerName, peerId) => {
     setTab('chat')
-    selectConv(cid)
+    if (cid) {
+      // 已有真会话：正常插入并选中
+      setConversations(prev => {
+        if (prev.some(c => c.conversation_id === cid)) return prev
+        return [...prev, { conversation_id: cid, unread_count: 0, name: peerName || `会话 #${cid}`, type: 'dm', last_msg_content: '', last_msg_from: '' }]
+      })
+      selectConv(cid)
+      return
+    }
+    // 草稿会话：本地态，cid=0，还没落库。发首条时用 peer_id 惰性建会话。
+    // 同一 peer 已有草稿则复用，避免重复。
+    setConversations(prev => {
+      const existing = prev.find(c => c.draft && c.peer_id === peerId)
+      if (existing) return prev
+      return [...prev, { conversation_id: 0, draft: true, peer_id: peerId, unread_count: 0, name: peerName || '新会话', type: 'dm', last_msg_content: '', last_msg_from: '' }]
+    })
+    setCurrentConvId(0)
+    currentConvIdRef.current = 0
+    setCurrentDraftPeer(peerId)
   }
 
-  const currentConv = conversations.find(c => c.conversation_id === currentConvId)
+  const currentConv = currentConvId
+    ? conversations.find(c => c.conversation_id === currentConvId)
+    : conversations.find(c => c.draft && c.peer_id === currentDraftPeer)
   const msgs = messagesByConv[currentConvId] || []
 
   return (
@@ -238,7 +289,7 @@ export default function Chat({ auth, onLogout }) {
             <div className="px-3 py-2">
               <button onClick={() => setShowCreateGroup(true)} className="w-full text-xs py-1.5 rounded-md bg-white text-gray-600 hover:bg-gray-100 transition border border-[#e0e0e0]">+ 发起群聊</button>
             </div>
-            <Sidebar conversations={conversations} currentConvId={currentConvId} onSelect={selectConv} getColor={getColor} />
+            <Sidebar conversations={conversations} currentConvId={currentConvId} currentDraftPeer={currentDraftPeer} onSelect={onSelectConv} getColor={getColor} />
           </div>
           {/* 消息区 */}
           <div className="flex-1 flex flex-col bg-[#f0ece3]">

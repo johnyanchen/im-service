@@ -58,10 +58,11 @@ export default function Contacts({ auth, getColor, onStartChat }) {
   }
 
   const startChat = async (friend) => {
+    // 查是否已有单聊会话；有则用真 cid，没有则进入草稿会话（cid=0，靠 peer_id 发首条）
     const res = await fetch('/api/conversations/dm', { method: 'POST', headers, body: JSON.stringify({ peer_id: friend.id }) })
     const data = await res.json()
-    const cid = data.conversationId || data.conversation_id
-    if (cid && onStartChat) onStartChat(cid, friend.username)
+    const cid = data.conversationId || data.conversation_id || 0
+    if (onStartChat) onStartChat(cid, friend.username, friend.id)
   }
 
   return (

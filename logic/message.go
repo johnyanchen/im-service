@@ -14,19 +14,33 @@ func (s *Server) SendMessage(ctx context.Context, req *pb.SendMessageRequest) (*
 	if err != nil {
 		return nil, err
 	}
-	ok, err := s.db.IsMember(ctx, req.ConversationId, uid)
+
+	convID := req.ConversationId
+	// 单聊首条：没有 conversation_id、只带 peer_id，此刻才惰性建会话。
+	// 没人说话就没有会话，避免"点开好友就在对方列表上屏一条空会话"。
+	if convID == 0 {
+		if req.PeerId == 0 {
+			return nil, fmt.Errorf("missing conversation_id or peer_id")
+		}
+		convID, err = s.findOrCreateDM(ctx, uid, req.PeerId)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	ok, err := s.db.IsMember(ctx, convID, uid)
 	if err != nil || !ok {
 		return nil, fmt.Errorf("not a member of this conversation")
 	}
 	var username string
 	s.db.Pool.QueryRow(ctx, "SELECT username FROM users WHERE id=$1", uid).Scan(&username)
 
-	msg, err := s.db.CreateMessage(ctx, req.ConversationId, uid, req.Content)
+	msg, err := s.db.CreateMessage(ctx, convID, uid, req.Content)
 	if err != nil {
 		return nil, err
 	}
 
-	meta, _ := s.db.GetConversationMeta(ctx, req.ConversationId, uid)
+	meta, _ := s.db.GetConversationMeta(ctx, convID, uid)
 	convType, convName := "", ""
 	if meta != nil {
 		convType = meta.Type
@@ -44,7 +58,23 @@ func (s *Server) SendMessage(ctx context.Context, req *pb.SendMessageRequest) (*
 		Content:          msg.Content,
 		CreatedAt:        msg.CreatedAt.UnixMilli(),
 	})
-	return &pb.SendMessageResponse{MessageId: msg.ID, CreatedAt: msg.CreatedAt.UnixMilli()}, nil
+	return &pb.SendMessageResponse{MessageId: msg.ID, CreatedAt: msg.CreatedAt.UnixMilli(), ConversationId: convID}, nil
+}
+
+// findOrCreateDM 返回 uid 与 peer 的单聊会话 id，不存在则新建并登记双方成员。
+// 会话在此刻（首条消息落库前）才诞生；会话视图行交给随后的 message fanout
+// 惰性 upsert，双方都靠这条消息第一次看到会话，无需单独的 conv_created 事件。
+func (s *Server) findOrCreateDM(ctx context.Context, uid, peerID int64) (int64, error) {
+	if convID, err := s.db.FindDMConversation(ctx, uid, peerID); err == nil {
+		return convID, nil
+	}
+	convID, err := s.db.CreateConversation(ctx, "dm")
+	if err != nil {
+		return 0, err
+	}
+	_ = s.db.AddConversationMember(ctx, convID, uid)
+	_ = s.db.AddConversationMember(ctx, convID, peerID)
+	return convID, nil
 }
 
 func (s *Server) CreateDM(ctx context.Context, req *pb.CreateDMRequest) (*pb.CreateDMResponse, error) {
@@ -52,39 +82,9 @@ func (s *Server) CreateDM(ctx context.Context, req *pb.CreateDMRequest) (*pb.Cre
 	if err != nil {
 		return nil, err
 	}
-	convID, err := s.db.FindDMConversation(ctx, uid, req.PeerId)
-	if err == nil {
-		return &pb.CreateDMResponse{ConversationId: convID}, nil
-	}
-	convID, err = s.db.CreateConversation(ctx, "dm")
-	if err != nil {
-		return nil, err
-	}
-	_ = s.db.AddConversationMember(ctx, convID, uid)
-	_ = s.db.AddConversationMember(ctx, convID, req.PeerId)
-	// 为双方插入会话视图行，DM 的会话名对各自显示为「对方用户名」
-	me, _ := s.db.GetUserByID(ctx, uid)
-	peer, _ := s.db.GetUserByID(ctx, req.PeerId)
-	peerName, myName := "", ""
-	if peer != nil {
-		peerName = peer.Username
-		_ = s.db.SeedUserConversation(ctx, uid, convID, "dm", peerName)
-	}
-	if me != nil {
-		myName = me.Username
-		_ = s.db.SeedUserConversation(ctx, req.PeerId, convID, "dm", myName)
-	}
-	// 实时推送新会话给在线成员（接收方侧 fanout 会把会话名翻成发起者名）
-	_ = s.producer.PublishFanout(&kafka.FanoutEvent{
-		EventType:        kafka.EventConvCreated,
-		ConversationID:   convID,
-		ConversationType: "dm",
-		ConversationName: peerName, // 发起者视角：对方名
-		FromID:           uid,
-		FromUsername:     myName,
-		CreatedAt:        time.Now().UnixMilli(),
-		Members:          []int64{uid, req.PeerId},
-	})
+	// 单聊会话已改为发首条消息时惰性创建（见 SendMessage），
+	// 这里不再预建，只返回已存在的会话；不存在则返回 0，前端进入草稿会话。
+	convID, _ := s.db.FindDMConversation(ctx, uid, req.PeerId)
 	return &pb.CreateDMResponse{ConversationId: convID}, nil
 }
 

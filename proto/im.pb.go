@@ -26,6 +26,7 @@ type SendMessageRequest struct {
 	Token          string                 `protobuf:"bytes,1,opt,name=token,proto3" json:"token,omitempty"`
 	ConversationId int64                  `protobuf:"varint,2,opt,name=conversation_id,json=conversationId,proto3" json:"conversation_id,omitempty"`
 	Content        string                 `protobuf:"bytes,3,opt,name=content,proto3" json:"content,omitempty"`
+	PeerId         int64                  `protobuf:"varint,4,opt,name=peer_id,json=peerId,proto3" json:"peer_id,omitempty"` // 单聊首条消息：无 conversation_id 时按 peer_id 惰性建会话
 	unknownFields  protoimpl.UnknownFields
 	sizeCache      protoimpl.SizeCache
 }
@@ -81,12 +82,20 @@ func (x *SendMessageRequest) GetContent() string {
 	return ""
 }
 
+func (x *SendMessageRequest) GetPeerId() int64 {
+	if x != nil {
+		return x.PeerId
+	}
+	return 0
+}
+
 type SendMessageResponse struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	MessageId     int64                  `protobuf:"varint,1,opt,name=message_id,json=messageId,proto3" json:"message_id,omitempty"`
-	CreatedAt     int64                  `protobuf:"varint,2,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	state          protoimpl.MessageState `protogen:"open.v1"`
+	MessageId      int64                  `protobuf:"varint,1,opt,name=message_id,json=messageId,proto3" json:"message_id,omitempty"`
+	CreatedAt      int64                  `protobuf:"varint,2,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`
+	ConversationId int64                  `protobuf:"varint,3,opt,name=conversation_id,json=conversationId,proto3" json:"conversation_id,omitempty"` // 回填真实会话 id，单聊首条据此把草稿窗口换成真会话
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
 }
 
 func (x *SendMessageResponse) Reset() {
@@ -129,6 +138,13 @@ func (x *SendMessageResponse) GetMessageId() int64 {
 func (x *SendMessageResponse) GetCreatedAt() int64 {
 	if x != nil {
 		return x.CreatedAt
+	}
+	return 0
+}
+
+func (x *SendMessageResponse) GetConversationId() int64 {
+	if x != nil {
+		return x.ConversationId
 	}
 	return 0
 }
@@ -1985,16 +2001,18 @@ var File_proto_im_proto protoreflect.FileDescriptor
 
 const file_proto_im_proto_rawDesc = "" +
 	"\n" +
-	"\x0eproto/im.proto\x12\x02im\"m\n" +
+	"\x0eproto/im.proto\x12\x02im\"\x86\x01\n" +
 	"\x12SendMessageRequest\x12\x14\n" +
 	"\x05token\x18\x01 \x01(\tR\x05token\x12'\n" +
 	"\x0fconversation_id\x18\x02 \x01(\x03R\x0econversationId\x12\x18\n" +
-	"\acontent\x18\x03 \x01(\tR\acontent\"S\n" +
+	"\acontent\x18\x03 \x01(\tR\acontent\x12\x17\n" +
+	"\apeer_id\x18\x04 \x01(\x03R\x06peerId\"|\n" +
 	"\x13SendMessageResponse\x12\x1d\n" +
 	"\n" +
 	"message_id\x18\x01 \x01(\x03R\tmessageId\x12\x1d\n" +
 	"\n" +
-	"created_at\x18\x02 \x01(\x03R\tcreatedAt\"[\n" +
+	"created_at\x18\x02 \x01(\x03R\tcreatedAt\x12'\n" +
+	"\x0fconversation_id\x18\x03 \x01(\x03R\x0econversationId\"[\n" +
 	"\vSyncRequest\x12\x14\n" +
 	"\x05token\x18\x01 \x01(\tR\x05token\x12 \n" +
 	"\flast_sync_at\x18\x02 \x01(\x03R\n" +
