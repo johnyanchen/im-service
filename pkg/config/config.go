@@ -8,6 +8,7 @@ type Config struct {
 	KafkaBrokers  []string
 	JWTSecret     string
 	GatewayGRPC   string
+	GatewayWSAddr string
 	LogicGRPC     string
 	WebSocketAddr string
 }
@@ -19,6 +20,7 @@ func Load() *Config {
 		KafkaBrokers:  []string{getEnv("KAFKA_BROKER", "localhost:9092")},
 		JWTSecret:     getEnv("JWT_SECRET", "dev-secret-key"),
 		GatewayGRPC:   getEnv("GATEWAY_GRPC", "localhost:9001"),
+		GatewayWSAddr: getEnv("GATEWAY_WS_ADDR", "localhost:8081"),
 		LogicGRPC:     getEnv("LOGIC_GRPC", "localhost:9002"),
 		WebSocketAddr: getEnv("WS_ADDR", "localhost:8080"),
 	}
