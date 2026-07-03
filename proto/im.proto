@@ -131,6 +131,7 @@ service LogicService {
   rpc RefreshInviteCode(GetInviteCodeRequest) returns (GetInviteCodeResponse);
   rpc AddFriendByCode(AddFriendByCodeRequest) returns (AddFriendByCodeResponse);
   rpc GetMessages(GetMessagesRequest) returns (GetMessagesResponse);
+  rpc DeleteFriend(DeleteFriendReq) returns (DeleteFriendResp);
 }
 
 message KickRequest {
@@ -194,6 +195,13 @@ message AddFriendByCodeRequest {
 message AddFriendByCodeResponse {
   string username = 1;
 }
+
+message DeleteFriendReq {
+  string token = 1;
+  int64 friend_id = 2;
+}
+
+message DeleteFriendResp {}
 
 message GetMessagesRequest {
   string token = 1;

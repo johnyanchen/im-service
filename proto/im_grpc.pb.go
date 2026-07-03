@@ -35,6 +35,7 @@ const (
 	LogicService_RefreshInviteCode_FullMethodName   = "/im.LogicService/RefreshInviteCode"
 	LogicService_AddFriendByCode_FullMethodName     = "/im.LogicService/AddFriendByCode"
 	LogicService_GetMessages_FullMethodName         = "/im.LogicService/GetMessages"
+	LogicService_DeleteFriend_FullMethodName        = "/im.LogicService/DeleteFriend"
 )
 
 // LogicServiceClient is the client API for LogicService service.
@@ -57,6 +58,7 @@ type LogicServiceClient interface {
 	RefreshInviteCode(ctx context.Context, in *GetInviteCodeRequest, opts ...grpc.CallOption) (*GetInviteCodeResponse, error)
 	AddFriendByCode(ctx context.Context, in *AddFriendByCodeRequest, opts ...grpc.CallOption) (*AddFriendByCodeResponse, error)
 	GetMessages(ctx context.Context, in *GetMessagesRequest, opts ...grpc.CallOption) (*GetMessagesResponse, error)
+	DeleteFriend(ctx context.Context, in *DeleteFriendReq, opts ...grpc.CallOption) (*DeleteFriendResp, error)
 }
 
 type logicServiceClient struct {
@@ -227,6 +229,16 @@ func (c *logicServiceClient) GetMessages(ctx context.Context, in *GetMessagesReq
 	return out, nil
 }
 
+func (c *logicServiceClient) DeleteFriend(ctx context.Context, in *DeleteFriendReq, opts ...grpc.CallOption) (*DeleteFriendResp, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(DeleteFriendResp)
+	err := c.cc.Invoke(ctx, LogicService_DeleteFriend_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // LogicServiceServer is the server API for LogicService service.
 // All implementations must embed UnimplementedLogicServiceServer
 // for forward compatibility.
@@ -247,6 +259,7 @@ type LogicServiceServer interface {
 	RefreshInviteCode(context.Context, *GetInviteCodeRequest) (*GetInviteCodeResponse, error)
 	AddFriendByCode(context.Context, *AddFriendByCodeRequest) (*AddFriendByCodeResponse, error)
 	GetMessages(context.Context, *GetMessagesRequest) (*GetMessagesResponse, error)
+	DeleteFriend(context.Context, *DeleteFriendReq) (*DeleteFriendResp, error)
 	mustEmbedUnimplementedLogicServiceServer()
 }
 
@@ -304,6 +317,9 @@ func (UnimplementedLogicServiceServer) AddFriendByCode(context.Context, *AddFrie
 }
 func (UnimplementedLogicServiceServer) GetMessages(context.Context, *GetMessagesRequest) (*GetMessagesResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method GetMessages not implemented")
+}
+func (UnimplementedLogicServiceServer) DeleteFriend(context.Context, *DeleteFriendReq) (*DeleteFriendResp, error) {
+	return nil, status.Error(codes.Unimplemented, "method DeleteFriend not implemented")
 }
 func (UnimplementedLogicServiceServer) mustEmbedUnimplementedLogicServiceServer() {}
 func (UnimplementedLogicServiceServer) testEmbeddedByValue()                      {}
@@ -614,6 +630,24 @@ func _LogicService_GetMessages_Handler(srv interface{}, ctx context.Context, dec
 	return interceptor(ctx, in, info, handler)
 }
 
+func _LogicService_DeleteFriend_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(DeleteFriendReq)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(LogicServiceServer).DeleteFriend(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: LogicService_DeleteFriend_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(LogicServiceServer).DeleteFriend(ctx, req.(*DeleteFriendReq))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // LogicService_ServiceDesc is the grpc.ServiceDesc for LogicService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -684,6 +718,10 @@ var LogicService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "GetMessages",
 			Handler:    _LogicService_GetMessages_Handler,
+		},
+		{
+			MethodName: "DeleteFriend",
+			Handler:    _LogicService_DeleteFriend_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

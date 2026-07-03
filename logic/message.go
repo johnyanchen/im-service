@@ -22,6 +22,14 @@ func (s *Server) SendMessage(ctx context.Context, req *pb.SendMessageRequest) (*
 		if req.PeerId == 0 {
 			return nil, fmt.Errorf("missing conversation_id or peer_id")
 		}
+		// 单聊必须是好友才能发消息。
+		ok, err := s.db.AreFriends(ctx, uid, req.PeerId)
+		if err != nil {
+			return nil, err
+		}
+		if !ok {
+			return nil, fmt.Errorf("对方不是你的好友")
+		}
 		convID, err = s.findOrCreateDM(ctx, uid, req.PeerId)
 		if err != nil {
 			return nil, err
@@ -31,6 +39,16 @@ func (s *Server) SendMessage(ctx context.Context, req *pb.SendMessageRequest) (*
 	ok, err := s.db.IsMember(ctx, convID, uid)
 	if err != nil || !ok {
 		return nil, fmt.Errorf("not a member of this conversation")
+	}
+	// 已有会话继续发：若是单聊，同样校验双方仍是好友（删好友后不能再在老会话发消息）。
+	if peer, ok, _ := s.db.GetDMPeer(ctx, convID, uid); ok {
+		areFriends, err := s.db.AreFriends(ctx, uid, peer)
+		if err != nil {
+			return nil, err
+		}
+		if !areFriends {
+			return nil, fmt.Errorf("对方不是你的好友")
+		}
 	}
 	var username string
 	s.db.Pool.QueryRow(ctx, "SELECT username FROM users WHERE id=$1", uid).Scan(&username)
@@ -82,8 +100,8 @@ func (s *Server) CreateDM(ctx context.Context, req *pb.CreateDMRequest) (*pb.Cre
 	if err != nil {
 		return nil, err
 	}
-	// 单聊会话已改为发首条消息时惰性创建（见 SendMessage），
-	// 这里不再预建，只返回已存在的会话；不存在则返回 0，前端进入草稿会话。
+	// 只返回已存在的会话；不存在则返回 0，前端进入草稿会话。
+	// 同时把 uid 侧的视图行恢复为未删除（重新加好友后从联系人进入时触发）。
 	convID, _ := s.db.FindDMConversation(ctx, uid, req.PeerId)
 	return &pb.CreateDMResponse{ConversationId: convID}, nil
 }
@@ -101,7 +119,18 @@ func (s *Server) GetMessages(ctx context.Context, req *pb.GetMessagesRequest) (*
 	if limit <= 0 {
 		limit = 30
 	}
-	msgs, err := s.db.GetMessagesBefore(ctx, req.ConversationId, req.BeforeId, limit)
+	// 单聊拉历史同样校验好友关系；min_visible 让删好友再加回的一方看不到旧历史。
+	if peer, isDM, _ := s.db.GetDMPeer(ctx, req.ConversationId, uid); isDM {
+		areFriends, err := s.db.AreFriends(ctx, uid, peer)
+		if err != nil {
+			return nil, err
+		}
+		if !areFriends {
+			return nil, fmt.Errorf("对方不是你的好友")
+		}
+	}
+	minVisible, _ := s.db.GetMinVisibleMsgID(ctx, uid, req.ConversationId)
+	msgs, err := s.db.GetMessagesBefore(ctx, req.ConversationId, req.BeforeId, limit, minVisible)
 	if err != nil {
 		return nil, err
 	}

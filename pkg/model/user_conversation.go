@@ -19,9 +19,13 @@ type UserConversation struct {
 }
 
 func (db *DB) UpsertUserConversation(ctx context.Context, userID, convID, msgID int64, isSender bool, content, fromUsername, convType, convName string) error {
+	// min_visible_msg_id：
+	//   - 行已存在（正常收发消息）→ 保持不变（沿用 A 上次删好友设置的下界，或默认 0）。
+	//   - 行不存在（删好友后重新加回、视图行重建）→ 设为 (msgID - 1)，即本条消息之前的历史都不可见，
+	//     A 只从这条重新聊起的消息开始看得到。用 msgID-1 而非 msgID，保证当前这条自己也可见。
 	_, err := db.Pool.Exec(ctx, `
-		INSERT INTO user_conversations(user_id, conversation_id, last_msg_id, last_read_msg_id, last_msg_content, last_msg_from, conv_type, conv_name, updated_at)
-		VALUES($1, $2, $3, CASE WHEN $4::bool THEN $3::bigint ELSE 0::bigint END, $5, $6, $7, $8, NOW())
+		INSERT INTO user_conversations(user_id, conversation_id, last_msg_id, last_read_msg_id, min_visible_msg_id, last_msg_content, last_msg_from, conv_type, conv_name, updated_at)
+		VALUES($1, $2, $3, CASE WHEN $4::bool THEN $3::bigint ELSE 0::bigint END, GREATEST($3::bigint - 1, 0), $5, $6, $7, $8, NOW())
 		ON CONFLICT(user_id, conversation_id) DO UPDATE SET
 			last_msg_id = $3,
 			last_read_msg_id = CASE WHEN $4::bool THEN $3::bigint ELSE user_conversations.last_read_msg_id END,
@@ -29,6 +33,7 @@ func (db *DB) UpsertUserConversation(ctx context.Context, userID, convID, msgID 
 			last_msg_from = $6,
 			conv_type = $7,
 			conv_name = $8,
+			is_deleted = FALSE,
 			updated_at = NOW()`,
 		userID, convID, msgID, isSender, content, fromUsername, convType, convName)
 	return err
@@ -43,7 +48,7 @@ func (db *DB) GetUpdatedConversations(ctx context.Context, userID int64, since t
 		        uc.conv_type, uc.conv_name, uc.last_msg_content, uc.last_msg_from,
 		        (SELECT COUNT(*) FROM messages m WHERE m.conversation_id = uc.conversation_id AND m.id > uc.last_read_msg_id) AS unread_count
 		 FROM user_conversations uc
-		 WHERE uc.user_id=$1 AND uc.updated_at > $2
+		 WHERE uc.user_id=$1 AND uc.updated_at > $2 AND uc.is_deleted = FALSE
 		 ORDER BY uc.updated_at DESC LIMIT $3`,
 		userID, since, limit)
 	if err != nil {
@@ -79,6 +84,16 @@ func (db *DB) SeedUserConversation(ctx context.Context, userID, convID int64, co
 	return err
 }
 
+// RestoreDMConversation 重新加好友后从联系人点"发消息"时调用，
+// 把该会话视图行标记为未删除，让会话重新出现在列表里。
+// convID 由调用方从 FindDMConversation 拿到，直接按主键更新，无需联表。
+func (db *DB) RestoreDMConversation(ctx context.Context, userID, convID int64) error {
+	_, err := db.Pool.Exec(ctx,
+		`UPDATE user_conversations SET is_deleted = FALSE WHERE user_id=$1 AND conversation_id=$2`,
+		userID, convID)
+	return err
+}
+
 func (db *DB) GetLastSyncAt(ctx context.Context, userID int64) (time.Time, error) {
 	return time.Time{}, nil
 }
@@ -89,6 +104,18 @@ func (db *DB) MarkRead(ctx context.Context, userID, convID, msgID int64) error {
 		WHERE user_id = $1 AND conversation_id = $2 AND last_read_msg_id < $3`,
 		userID, convID, msgID)
 	return err
+}
+
+// GetMinVisibleMsgID 返回用户在该会话的可见下界。行不存在时返回 0（可见全部）。
+func (db *DB) GetMinVisibleMsgID(ctx context.Context, userID, convID int64) (int64, error) {
+	var minID int64
+	err := db.Pool.QueryRow(ctx,
+		`SELECT min_visible_msg_id FROM user_conversations WHERE user_id=$1 AND conversation_id=$2`,
+		userID, convID).Scan(&minID)
+	if err != nil {
+		return 0, err
+	}
+	return minID, nil
 }
 
 type ConversationMeta struct {

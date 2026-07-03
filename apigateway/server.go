@@ -8,9 +8,17 @@ import (
 	"strings"
 	"time"
 
+	"google.golang.org/grpc/status"
+
 	"im-service/pkg/config"
 	pb "im-service/proto"
 )
+
+// grpcErrMsg 剥掉 gRPC 包的 "rpc error: code = ... desc = " 前缀，
+// 只取 logic 层真正返回的描述（如"对方不是你的好友"）给前端展示。
+func grpcErrMsg(err error) string {
+	return status.Convert(err).Message()
+}
 
 // APIServer 是无状态的 HTTP API 网关：把前端的 /api/* 请求解出 token、
 // 转发给 logic，并回写 JSON；同时服务前端静态资源。它不持有任何长连接，
@@ -34,7 +42,7 @@ func (s *APIServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		resp, err := s.logic.Login(ctx, &req)
 		w.Header().Set("Content-Type", "application/json")
 		if err != nil {
-			json.NewEncoder(w).Encode(map[string]string{"error": err.Error()})
+			json.NewEncoder(w).Encode(map[string]string{"error": grpcErrMsg(err)})
 			return
 		}
 		json.NewEncoder(w).Encode(resp)
@@ -44,7 +52,7 @@ func (s *APIServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		resp, err := s.logic.Register(r.Context(), &req)
 		w.Header().Set("Content-Type", "application/json")
 		if err != nil {
-			json.NewEncoder(w).Encode(map[string]string{"error": err.Error()})
+			json.NewEncoder(w).Encode(map[string]string{"error": grpcErrMsg(err)})
 			return
 		}
 		json.NewEncoder(w).Encode(resp)
@@ -76,6 +84,8 @@ func (s *APIServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		s.handleRefreshInviteCode(w, r)
 	case r.URL.Path == "/api/friends/add-by-code" && r.Method == "POST":
 		s.handleAddFriendByCode(w, r)
+	case r.URL.Path == "/api/friends/delete" && r.Method == "POST":
+		s.handleDeleteFriend(w, r)
 	default:
 		http.FileServer(http.Dir("web")).ServeHTTP(w, r)
 	}
@@ -101,7 +111,7 @@ func (s *APIServer) handleSync(w http.ResponseWriter, r *http.Request) {
 	resp, err := s.logic.Sync(r.Context(), &pb.SyncRequest{Token: token, LastSyncAt: lastSyncAt})
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
-		json.NewEncoder(w).Encode(map[string]string{"error": err.Error()})
+		json.NewEncoder(w).Encode(map[string]string{"error": grpcErrMsg(err)})
 		return
 	}
 	json.NewEncoder(w).Encode(resp)
@@ -117,15 +127,16 @@ func (s *APIServer) handleSendMessage(w http.ResponseWriter, r *http.Request) {
 	}
 	var body struct {
 		ConversationID int64  `json:"conversation_id"`
+		PeerID         int64  `json:"peer_id"` // 单聊首条：无 conversation_id 时按 peer_id 惰性建会话
 		Content        string `json:"content"`
 	}
 	json.NewDecoder(r.Body).Decode(&body)
 	resp, err := s.logic.SendMessage(r.Context(), &pb.SendMessageRequest{
-		Token: token, ConversationId: body.ConversationID, Content: body.Content,
+		Token: token, ConversationId: body.ConversationID, PeerId: body.PeerID, Content: body.Content,
 	})
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
-		json.NewEncoder(w).Encode(map[string]string{"error": err.Error()})
+		json.NewEncoder(w).Encode(map[string]string{"error": grpcErrMsg(err)})
 		return
 	}
 	json.NewEncoder(w).Encode(resp)
@@ -151,7 +162,7 @@ func (s *APIServer) handleMarkRead(w http.ResponseWriter, r *http.Request) {
 	})
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
-		json.NewEncoder(w).Encode(map[string]string{"error": err.Error()})
+		json.NewEncoder(w).Encode(map[string]string{"error": grpcErrMsg(err)})
 		return
 	}
 	json.NewEncoder(w).Encode(map[string]string{"status": "ok"})
@@ -175,7 +186,7 @@ func (s *APIServer) handleGetMessages(w http.ResponseWriter, r *http.Request) {
 	})
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
-		json.NewEncoder(w).Encode(map[string]string{"error": err.Error()})
+		json.NewEncoder(w).Encode(map[string]string{"error": grpcErrMsg(err)})
 		return
 	}
 	json.NewEncoder(w).Encode(resp)
@@ -196,7 +207,7 @@ func (s *APIServer) handleCreateDM(w http.ResponseWriter, r *http.Request) {
 	resp, err := s.logic.CreateDM(r.Context(), &pb.CreateDMRequest{Token: token, PeerId: body.PeerID})
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
-		json.NewEncoder(w).Encode(map[string]string{"error": err.Error()})
+		json.NewEncoder(w).Encode(map[string]string{"error": grpcErrMsg(err)})
 		return
 	}
 	json.NewEncoder(w).Encode(resp)
@@ -220,7 +231,7 @@ func (s *APIServer) handleCreateGroup(w http.ResponseWriter, r *http.Request) {
 	})
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
-		json.NewEncoder(w).Encode(map[string]string{"error": err.Error()})
+		json.NewEncoder(w).Encode(map[string]string{"error": grpcErrMsg(err)})
 		return
 	}
 	json.NewEncoder(w).Encode(resp)
@@ -237,7 +248,7 @@ func (s *APIServer) handleListUsers(w http.ResponseWriter, r *http.Request) {
 	resp, err := s.logic.ListUsers(r.Context(), &pb.ListUsersRequest{Token: token})
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
-		json.NewEncoder(w).Encode(map[string]string{"error": err.Error()})
+		json.NewEncoder(w).Encode(map[string]string{"error": grpcErrMsg(err)})
 		return
 	}
 	json.NewEncoder(w).Encode(resp)
@@ -254,7 +265,7 @@ func (s *APIServer) handleListFriends(w http.ResponseWriter, r *http.Request) {
 	resp, err := s.logic.ListFriends(r.Context(), &pb.ListFriendsRequest{Token: token})
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
-		json.NewEncoder(w).Encode(map[string]string{"error": err.Error()})
+		json.NewEncoder(w).Encode(map[string]string{"error": grpcErrMsg(err)})
 		return
 	}
 	json.NewEncoder(w).Encode(resp)
@@ -271,7 +282,7 @@ func (s *APIServer) handleListFriendRequests(w http.ResponseWriter, r *http.Requ
 	resp, err := s.logic.ListFriendRequests(r.Context(), &pb.ListFriendRequestsRequest{Token: token})
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
-		json.NewEncoder(w).Encode(map[string]string{"error": err.Error()})
+		json.NewEncoder(w).Encode(map[string]string{"error": grpcErrMsg(err)})
 		return
 	}
 	json.NewEncoder(w).Encode(resp)
@@ -292,7 +303,7 @@ func (s *APIServer) handleSendFriendRequest(w http.ResponseWriter, r *http.Reque
 	resp, err := s.logic.SendFriendRequest(r.Context(), &pb.SendFriendRequestReq{Token: token, ToId: body.ToID})
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
-		json.NewEncoder(w).Encode(map[string]string{"error": err.Error()})
+		json.NewEncoder(w).Encode(map[string]string{"error": grpcErrMsg(err)})
 		return
 	}
 	json.NewEncoder(w).Encode(resp)
@@ -314,7 +325,7 @@ func (s *APIServer) handleHandleFriendRequest(w http.ResponseWriter, r *http.Req
 	resp, err := s.logic.HandleFriendRequest(r.Context(), &pb.HandleFriendRequestReq{Token: token, RequestId: body.RequestID, Accept: body.Accept})
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
-		json.NewEncoder(w).Encode(map[string]string{"error": err.Error()})
+		json.NewEncoder(w).Encode(map[string]string{"error": grpcErrMsg(err)})
 		return
 	}
 	json.NewEncoder(w).Encode(resp)
@@ -331,7 +342,7 @@ func (s *APIServer) handleGetInviteCode(w http.ResponseWriter, r *http.Request) 
 	resp, err := s.logic.GetInviteCode(r.Context(), &pb.GetInviteCodeRequest{Token: token})
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
-		json.NewEncoder(w).Encode(map[string]string{"error": err.Error()})
+		json.NewEncoder(w).Encode(map[string]string{"error": grpcErrMsg(err)})
 		return
 	}
 	json.NewEncoder(w).Encode(resp)
@@ -348,7 +359,7 @@ func (s *APIServer) handleRefreshInviteCode(w http.ResponseWriter, r *http.Reque
 	resp, err := s.logic.RefreshInviteCode(r.Context(), &pb.GetInviteCodeRequest{Token: token})
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
-		json.NewEncoder(w).Encode(map[string]string{"error": err.Error()})
+		json.NewEncoder(w).Encode(map[string]string{"error": grpcErrMsg(err)})
 		return
 	}
 	json.NewEncoder(w).Encode(resp)
@@ -369,7 +380,28 @@ func (s *APIServer) handleAddFriendByCode(w http.ResponseWriter, r *http.Request
 	resp, err := s.logic.AddFriendByCode(r.Context(), &pb.AddFriendByCodeRequest{Token: token, Code: body.Code})
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
-		json.NewEncoder(w).Encode(map[string]string{"error": err.Error()})
+		json.NewEncoder(w).Encode(map[string]string{"error": grpcErrMsg(err)})
+		return
+	}
+	json.NewEncoder(w).Encode(resp)
+}
+
+func (s *APIServer) handleDeleteFriend(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	token := s.extractToken(r)
+	if token == "" {
+		w.WriteHeader(http.StatusUnauthorized)
+		json.NewEncoder(w).Encode(map[string]string{"error": "missing token"})
+		return
+	}
+	var body struct {
+		FriendID int64 `json:"friend_id"`
+	}
+	json.NewDecoder(r.Body).Decode(&body)
+	resp, err := s.logic.DeleteFriend(r.Context(), &pb.DeleteFriendReq{Token: token, FriendId: body.FriendID})
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		json.NewEncoder(w).Encode(map[string]string{"error": grpcErrMsg(err)})
 		return
 	}
 	json.NewEncoder(w).Encode(resp)

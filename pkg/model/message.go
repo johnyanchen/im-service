@@ -22,22 +22,24 @@ func (db *DB) CreateMessage(ctx context.Context, convID, fromID int64, content s
 	return msg, err
 }
 
-func (db *DB) GetMessagesBefore(ctx context.Context, convID, beforeID int64, limit int) ([]*Message, error) {
+func (db *DB) GetMessagesBefore(ctx context.Context, convID, beforeID int64, limit int, minVisibleID int64) ([]*Message, error) {
 	if limit <= 0 {
 		limit = 30
 	}
+	// minVisibleID：调用者在该会话的可见下界（删好友再加回后只看重新聊起之后的消息）。
+	// 统一加 m.id > minVisibleID 过滤；默认 0 表示可见全部。
 	var query string
 	var args []interface{}
 	if beforeID > 0 {
 		query = `SELECT m.id, m.conversation_id, m.from_id, u.username, m.content, m.created_at
 			 FROM messages m JOIN users u ON u.id = m.from_id
-			 WHERE m.conversation_id=$1 AND m.id < $2 ORDER BY m.id DESC LIMIT $3`
-		args = []interface{}{convID, beforeID, limit}
+			 WHERE m.conversation_id=$1 AND m.id < $2 AND m.id > $4 ORDER BY m.id DESC LIMIT $3`
+		args = []interface{}{convID, beforeID, limit, minVisibleID}
 	} else {
 		query = `SELECT m.id, m.conversation_id, m.from_id, u.username, m.content, m.created_at
 			 FROM messages m JOIN users u ON u.id = m.from_id
-			 WHERE m.conversation_id=$1 ORDER BY m.id DESC LIMIT $2`
-		args = []interface{}{convID, limit}
+			 WHERE m.conversation_id=$1 AND m.id > $3 ORDER BY m.id DESC LIMIT $2`
+		args = []interface{}{convID, limit, minVisibleID}
 	}
 	rows, err := db.Pool.Query(ctx, query, args...)
 	if err != nil {

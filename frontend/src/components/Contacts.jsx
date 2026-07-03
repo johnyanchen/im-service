@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 
-export default function Contacts({ auth, getColor, onStartChat }) {
+export default function Contacts({ auth, getColor, onStartChat, friendTick, onFriendDeleted }) {
   const [friends, setFriends] = useState([])
   const [requests, setRequests] = useState([])
   const [myCode, setMyCode] = useState('')
@@ -29,6 +29,12 @@ export default function Contacts({ auth, getColor, onStartChat }) {
   }
 
   useEffect(() => { loadFriends(); loadRequests(); loadInviteCode() }, [])
+
+  // 收到好友事件（friendTick 变化）时重新拉取申请与好友列表。跳过首次挂载，避免与上面的初始加载重复。
+  useEffect(() => {
+    if (friendTick === undefined || friendTick === 0) return
+    loadRequests(); loadFriends()
+  }, [friendTick])
 
   const refreshCode = async () => {
     const res = await fetch('/api/invite-code/refresh', { method: 'POST', headers })
@@ -63,6 +69,16 @@ export default function Contacts({ auth, getColor, onStartChat }) {
     const data = await res.json()
     const cid = data.conversationId || data.conversation_id || 0
     if (onStartChat) onStartChat(cid, friend.username, friend.id)
+  }
+
+  const deleteFriend = async (friend) => {
+    if (!confirm(`删除好友「${friend.username}」？将同时删除与 TA 的聊天会话和记录。`)) return
+    const res = await fetch('/api/friends/delete', { method: 'POST', headers, body: JSON.stringify({ friend_id: friend.id }) })
+    const data = await res.json().catch(() => ({}))
+    if (data.error) { setAddMsg(data.error); setTimeout(() => setAddMsg(''), 3000); return }
+    setFriends(prev => prev.filter(u => u.id !== friend.id))
+    setSelected(null)
+    if (onFriendDeleted) onFriendDeleted(friend) // 通知外层从会话列表移除对应 dm
   }
 
   return (
@@ -147,12 +163,19 @@ export default function Contacts({ auth, getColor, onStartChat }) {
             </div>
             <h3 className="text-lg font-medium text-gray-900">{selected.data.username}</h3>
             <p className="text-sm text-gray-500 mt-2">已是好友</p>
-            <button
-              onClick={() => startChat(selected.data)}
-              className="mt-5 px-6 py-2 bg-[#07c160] text-white rounded-md text-sm hover:bg-[#06ae56] transition flex items-center gap-2">
-              <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><path d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm0 14H6l-2 2V4h16v12z"/></svg>
-              发消息
-            </button>
+            <div className="mt-5 flex gap-3">
+              <button
+                onClick={() => startChat(selected.data)}
+                className="px-6 py-2 bg-[#07c160] text-white rounded-md text-sm hover:bg-[#06ae56] transition flex items-center gap-2">
+                <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><path d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm0 14H6l-2 2V4h16v12z"/></svg>
+                发消息
+              </button>
+              <button
+                onClick={() => deleteFriend(selected.data)}
+                className="px-6 py-2 bg-white text-[#f55c5c] border border-[#f0d0d0] rounded-md text-sm hover:bg-[#fdeeee] transition">
+                删除好友
+              </button>
+            </div>
           </div>
         )}
 

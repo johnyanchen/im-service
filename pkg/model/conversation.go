@@ -58,3 +58,18 @@ func (db *DB) FindDMConversation(ctx context.Context, userA, userB int64) (int64
 		LIMIT 1`, userA, userB).Scan(&convID)
 	return convID, err
 }
+
+// GetDMPeer 返回单聊会话中 uid 的对端用户 id。若会话不是 dm（或查不到对端），ok=false。
+// 用于对已有会话的发消息/拉历史做好友校验（群聊不校验，故 ok=false 直接放行）。
+func (db *DB) GetDMPeer(ctx context.Context, convID, uid int64) (int64, bool, error) {
+	var peer int64
+	err := db.Pool.QueryRow(ctx, `
+		SELECT cm.user_id FROM conversation_members cm
+		JOIN conversations c ON c.id = cm.conversation_id
+		WHERE cm.conversation_id=$1 AND cm.user_id != $2 AND c.type='dm'
+		LIMIT 1`, convID, uid).Scan(&peer)
+	if err != nil {
+		return 0, false, nil // 非 dm 或无对端：不校验
+	}
+	return peer, true, nil
+}

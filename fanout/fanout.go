@@ -34,6 +34,9 @@ func (f *FanoutProcessor) Handle(ctx context.Context, event *kafka.FanoutEvent) 
 	if event.EventType == kafka.EventConvCreated {
 		return f.handleConvCreated(ctx, event)
 	}
+	if event.EventType == kafka.EventFriend {
+		return f.handleFriendEvent(ctx, event)
+	}
 
 	members, err := f.redis.GetMembers(ctx, event.ConversationID)
 	if err == redis.Nil {
@@ -69,6 +72,11 @@ func (f *FanoutProcessor) Handle(ctx context.Context, event *kafka.FanoutEvent) 
 			if err != nil {
 				log.Printf("fanout: upsert uc error uid=%d: %v", userID, err)
 			}
+			// 发送者不推自己的消息：本端已靠 HTTP 响应上屏，其它端靠 sync 兜底。
+			// 仍需上面的 UpsertUserConversation 维护发送者的会话视图行（last_msg 等）。
+			if isSender {
+				return
+			}
 			route, err := f.redis.GetRoute(ctx, userID)
 			if err != nil {
 				return
@@ -95,6 +103,32 @@ func (f *FanoutProcessor) Handle(ctx context.Context, event *kafka.FanoutEvent) 
 		}(uid)
 	}
 	wg.Wait()
+	return nil
+}
+
+// handleFriendEvent 把好友申请/同意/拒绝实时推给目标用户。
+// 不做会话成员扩散——好友事件只针对单个用户 event.TargetID。
+// 目标不在线则静默跳过，靠 /api/friends/requests 拉取兜底。
+func (f *FanoutProcessor) handleFriendEvent(ctx context.Context, event *kafka.FanoutEvent) error {
+	route, err := f.redis.GetRoute(ctx, event.TargetID)
+	if err != nil {
+		return nil // 不在线
+	}
+	client := f.getGatewayClient(redisstore.GatewayAddrOf(route))
+	if client == nil {
+		return nil
+	}
+	payload, _ := json.Marshal(map[string]interface{}{
+		"type":          "friend_event",
+		"action":        event.FriendAction,
+		"request_id":    event.RequestID,
+		"from_id":       event.FromID,
+		"from_username": event.FromUsername,
+		"created_at":    event.CreatedAt,
+	})
+	if _, err := client.Push(ctx, &pb.PushRequest{UserId: event.TargetID, Payload: payload}); err != nil {
+		log.Printf("fanout: push friend_event to %d via %s failed: %v", event.TargetID, route, err)
+	}
 	return nil
 }
 
@@ -152,7 +186,8 @@ func (f *FanoutProcessor) handleConvCreated(ctx context.Context, event *kafka.Fa
 	return nil
 }
 
-func (f *FanoutProcessor) getGatewayClient(addr string) pb.GatewayServiceClient {	f.mu.RLock()
+func (f *FanoutProcessor) getGatewayClient(addr string) pb.GatewayServiceClient {
+	f.mu.RLock()
 	c, ok := f.gateways[addr]
 	f.mu.RUnlock()
 	if ok {

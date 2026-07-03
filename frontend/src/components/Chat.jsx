@@ -18,13 +18,20 @@ export default function Chat({ auth, onLogout }) {
   const [currentConvId, setCurrentConvId] = useState(null)
   const [currentDraftPeer, setCurrentDraftPeer] = useState(null) // 选中的草稿会话对应的 peer_id
   const currentConvIdRef = useRef(null)
+  const tabRef = useRef('chat') // 供 WS 回调读取当前 tab，避免闭包过期
+  // 每个会话「已计入未读的最大 message_id」水位。sync 与推送共用它做去重计数：
+  // 只有 message_id 超过水位的消息才 +1，保证 sync/推送乱序或重复到达都不会多算漏算。
+  const unreadHiRef = useRef({}) // { [convId]: maxCountedMsgId }
   const [messagesByConv, setMessagesByConv] = useState({})
   const [input, setInput] = useState('')
+  const [sendError, setSendError] = useState('') // 发送失败提示（如"对方不是你的好友"）
   const wsRef = useRef(null)
   const [online, setOnline] = useState(true)
   const [loadingMsgs, setLoadingMsgs] = useState(false)
   const [noMoreMsgs, setNoMoreMsgs] = useState({}) // {convId: true}
   const [showCreateGroup, setShowCreateGroup] = useState(false)
+  const [friendTick, setFriendTick] = useState(0) // 收到好友事件时 +1，通知 Contacts 重新拉取
+  const [friendUnread, setFriendUnread] = useState(0) // 未在联系人 tab 时累积的新申请数，用于红点
 
   const authHeaders = { 'Content-Type': 'application/json', 'Authorization': `Bearer ${auth.token}` }
 
@@ -37,12 +44,33 @@ export default function Chat({ auth, onLogout }) {
           const updated = [...prev]
           data.conversations.forEach(c => {
             const cid = c.conversationId || c.conversation_id
-            const conv = { conversation_id: cid, unread_count: c.unreadCount ?? c.unread_count ?? 0,
-              name: c.name || `会话 #${cid}`, type: c.type || 'dm', last_msg_content: c.lastMsgContent || c.last_msg_content || '',
-              last_msg_from: c.lastMsgFrom || c.last_msg_from || '' }
+            const serverUnread = c.unreadCount ?? c.unread_count ?? 0
+            const serverLastMsgId = c.lastMsgId ?? c.last_msg_id ?? 0
+            // sync 的 unread 是「截至 serverLastMsgId 的权威未读」。之后靠推送在此基础上 +1，
+            // 因此把水位推进到 serverLastMsgId：超过它的推送才会被计数，避免与 sync 重复。
+            // 若某条更新的消息已被推送先行计数（水位已更高），保留较高水位，别回退。
             const idx = updated.findIndex(x => x.conversation_id === cid)
-            if (idx >= 0) Object.assign(updated[idx], conv)
-            else updated.push(conv)
+            const prevHi = unreadHiRef.current[cid] || 0
+            // sync 已经把 serverLastMsgId 及之前的都算进 serverUnread，
+            // 但如果推送已经领先（prevHi > serverLastMsgId），说明有 sync 尚未反映的新消息，
+            // 那部分未读要在 serverUnread 之外额外保留，用当前显示值兜底取 max。
+            const conv = {
+              conversation_id: cid,
+              name: c.name || `会话 #${cid}`, type: c.type || 'dm',
+              last_msg_content: c.lastMsgContent || c.last_msg_content || '',
+              last_msg_from: c.lastMsgFrom || c.last_msg_from || '',
+            }
+            if (idx >= 0) {
+              const cur = updated[idx].unread_count || 0
+              // 推送已领先于 sync 快照：以现有显示值为准（它含 sync 之后到达的消息）；
+              // 否则用服务端权威值。取 max 双保险，杜绝红点被 sync 抹回。
+              conv.unread_count = prevHi > serverLastMsgId ? Math.max(cur, serverUnread) : serverUnread
+              Object.assign(updated[idx], conv)
+            } else {
+              conv.unread_count = serverUnread
+              updated.push(conv)
+            }
+            if (serverLastMsgId > prevHi) unreadHiRef.current[cid] = serverLastMsgId
           })
           return updated
         })
@@ -75,9 +103,8 @@ export default function Chat({ auth, onLogout }) {
           const newMsgs = msgs.filter(m => !existingIds.has(m.id))
           return { ...prev, [convId]: [...newMsgs, ...existing] }
         } else {
-          // initial load: merge with any messages already received via push
-          const pushOnly = existing.filter(m => !msgs.find(x => x.id === m.id))
-          return { ...prev, [convId]: [...msgs, ...pushOnly] }
+          // initial load: 直接替换，以服务端为准（水位过滤后的结果）
+          return { ...prev, [convId]: msgs }
         }
       })
     } catch (e) {
@@ -96,6 +123,15 @@ export default function Chat({ auth, onLogout }) {
 
   const handleMessage = useCallback((e) => {
     const msg = JSON.parse(e.data)
+    if (msg.type === 'friend_event') {
+      // 好友申请/同意/拒绝：触发 Contacts 重新拉取申请/好友列表。
+      setFriendTick(t => t + 1)
+      // 收到新申请且不在联系人 tab 时，累积红点。
+      if (msg.action === 'request' && tabRef.current !== 'contacts') {
+        setFriendUnread(n => n + 1)
+      }
+      return
+    }
     if (msg.type === 'conv_created') {
       const cid = msg.conversation_id
       setConversations(prev => {
@@ -123,14 +159,24 @@ export default function Chat({ auth, onLogout }) {
       if (!isSelf && isViewing) {
         fetch(`/api/conversations/${cid}/read`, { method: 'POST', headers: authHeaders, body: JSON.stringify({ msg_id: msg.message_id }) })
       }
+      // 是否该为这条消息 +1：只有它超过本会话未读水位、且不是自己发的、且没在看该会话时才计数。
+      // 超过水位就把水位推进到这条 id，杜绝同一条消息被 sync 和推送重复计数。
+      const prevHi = unreadHiRef.current[cid] || 0
+      const isNewForUnread = msg.message_id > prevHi
+      if (isNewForUnread) unreadHiRef.current[cid] = msg.message_id
+      // 正在看或自己发的，视为已读，推进已读水位到这条，避免之后 sync 又把它算成未读。
+      if (isSelf || isViewing) {
+        if (msg.message_id > (unreadHiRef.current[cid] || 0)) unreadHiRef.current[cid] = msg.message_id
+      }
       setConversations(prev => {
         const exists = prev.some(x => x.conversation_id === cid)
+        const shouldBump = isNewForUnread && !isSelf && !isViewing
         if (!exists) {
-          return [...prev, { conversation_id: cid, unread_count: isSelf ? 0 : 1, name: msg.conversation_name || `会话 #${cid}`, type: msg.conversation_type || 'dm', last_msg_content: msg.content, last_msg_from: msg.from_username }]
+          return [...prev, { conversation_id: cid, unread_count: shouldBump ? 1 : 0, name: msg.conversation_name || `会话 #${cid}`, type: msg.conversation_type || 'dm', last_msg_content: msg.content, last_msg_from: msg.from_username }]
         }
         return prev.map(c => {
           if (c.conversation_id !== cid) return c
-          const unread = (isSelf || isViewing) ? 0 : (c.unread_count + 1)
+          const unread = (isSelf || isViewing) ? 0 : (shouldBump ? c.unread_count + 1 : c.unread_count)
           return { ...c, last_msg_content: msg.content, last_msg_from: msg.from_username, unread_count: unread }
         })
       })
@@ -160,13 +206,45 @@ export default function Chat({ auth, onLogout }) {
     if (!input.trim() || !currentConv) return
     const text = input
     setInput('')
+    setSendError('')
     // 草稿单聊会话（cid=0）：带 peer_id 让后端惰性建会话；否则带 conversation_id
     const body = currentConv.draft
       ? { peer_id: currentConv.peer_id, content: text }
       : { conversation_id: currentConv.conversation_id, content: text }
-    const res = await fetch('/api/messages', { method: 'POST', headers: authHeaders, body: JSON.stringify(body) })
-    const data = await res.json()
+    let res, data
+    try {
+      res = await fetch('/api/messages', { method: 'POST', headers: authHeaders, body: JSON.stringify(body) })
+      data = await res.json().catch(() => ({}))
+    } catch {
+      setInput(text) // 网络错误：回填输入，别丢用户已打的字
+      setSendError('发送失败，请检查网络')
+      return
+    }
+    // 后端拒绝（如删好友后不再是好友）：显示错误、回填输入，不上屏。
+    if (!res.ok || data.error) {
+      setInput(text)
+      setSendError(data.error || '发送失败')
+      return
+    }
     const realCid = data.conversationId || data.conversation_id
+    const msgId = data.messageId || data.message_id
+    const createdAt = data.createdAt || data.created_at
+    // 发送者不再收到自己消息的 WS 自推，改由这里用 HTTP 响应本地上屏。
+    if (realCid && msgId) {
+      const mine = { id: msgId, from: auth.username, fromId: auth.userId, content: text, time: createdAt }
+      setMessagesByConv(prev => {
+        const list = prev[realCid] ? [...prev[realCid]] : []
+        if (!list.find(m => m.id === msgId)) list.push(mine)
+        return { ...prev, [realCid]: list }
+      })
+      // 自己发的即已读，推进未读水位，避免随后的 sync 把它算成未读。
+      if (msgId > (unreadHiRef.current[realCid] || 0)) unreadHiRef.current[realCid] = msgId
+      setConversations(prev => prev.map(c =>
+        c.conversation_id === realCid
+          ? { ...c, last_msg_content: text, last_msg_from: auth.username, unread_count: 0 }
+          : c
+      ))
+    }
     // 首条发完，后端回填真实 cid：把草稿窗口换成真会话
     if (currentConv.draft && realCid) {
       setConversations(prev => prev.map(c =>
@@ -176,7 +254,10 @@ export default function Chat({ auth, onLogout }) {
       ))
       setMessagesByConv(prev => {
         if (!prev[0]) return prev
-        const next = { ...prev, [realCid]: [...(prev[realCid] || []), ...prev[0]] }
+        // 合并草稿窗口(cid=0)下已上屏的消息到真会话，去重。
+        const merged = [...(prev[realCid] || [])]
+        for (const m of prev[0]) if (!merged.find(x => x.id === m.id)) merged.push(m)
+        const next = { ...prev, [realCid]: merged }
         delete next[0]
         return next
       })
@@ -192,12 +273,12 @@ export default function Chat({ auth, onLogout }) {
     setCurrentDraftPeer(null)
     setConversations(prev => prev.map(c => c.conversation_id === id ? { ...c, unread_count: 0 } : c))
     if (!id) return // 草稿会话（id=0）无历史可拉    // Load messages if not already loaded
-    if (!messagesByConv[id] || messagesByConv[id].length === 0) {
-      loadMessages(id)
-    }
+    loadMessages(id)
     const msgs = messagesByConv[id]
     if (msgs && msgs.length > 0) {
       const lastId = msgs[msgs.length - 1].id
+      // 点开即已读：推进未读水位到最后一条，避免随后的 sync 又把它们算成未读。
+      if (lastId > (unreadHiRef.current[id] || 0)) unreadHiRef.current[id] = lastId
       fetch(`/api/conversations/${id}/read`, { method: 'POST', headers: authHeaders, body: JSON.stringify({ msg_id: lastId }) })
     }
   }
@@ -225,11 +306,12 @@ export default function Chat({ auth, onLogout }) {
 
   const startChatWith = (cid, peerName, peerId) => {
     setTab('chat')
+    tabRef.current = 'chat'
     if (cid) {
-      // 已有真会话：正常插入并选中
+      // 已有真会话：正常插入并选中。记录 peer_id/peerName 便于删好友时本地移除。
       setConversations(prev => {
         if (prev.some(c => c.conversation_id === cid)) return prev
-        return [...prev, { conversation_id: cid, unread_count: 0, name: peerName || `会话 #${cid}`, type: 'dm', last_msg_content: '', last_msg_from: '' }]
+        return [...prev, { conversation_id: cid, peer_id: peerId, unread_count: 0, name: peerName || `会话 #${cid}`, type: 'dm', last_msg_content: '', last_msg_from: '' }]
       })
       selectConv(cid)
       return
@@ -244,6 +326,25 @@ export default function Chat({ auth, onLogout }) {
     setCurrentConvId(0)
     currentConvIdRef.current = 0
     setCurrentDraftPeer(peerId)
+  }
+
+  // 删好友后：从会话列表移除与该好友的 dm 会话（本地态；后端已删发起方视图行）。
+  // 优先按 peer_id 匹配，回退按用户名匹配（sync 下来的 dm 会话名就是对方用户名）。
+  const handleFriendDeleted = (friend) => {
+    setConversations(prev => prev.filter(c => {
+      if (c.type !== 'dm') return true
+      const byPeer = c.peer_id && friend.id && c.peer_id === friend.id
+      const byName = c.name && c.name === friend.username
+      return !(byPeer || byName)
+    }))
+    setCurrentConvId(cur => {
+      const removed = conversations.find(c => c.type === 'dm' && ((c.peer_id && c.peer_id === friend.id) || c.name === friend.username))
+      if (removed && removed.conversation_id === cur) {
+        currentConvIdRef.current = null
+        return null
+      }
+      return cur
+    })
   }
 
   const currentConv = currentConvId
@@ -266,11 +367,12 @@ export default function Chat({ auth, onLogout }) {
           </div>
         </div>
         <div className="flex-1 flex flex-col items-center gap-2 mt-4">
-          <button onClick={() => setTab('chat')} className={`w-10 h-10 rounded-lg flex items-center justify-center transition ${tab === 'chat' ? 'bg-[#464646]' : 'hover:bg-[#3a3a3a]'}`} title="聊天">
+          <button onClick={() => { setTab('chat'); tabRef.current = 'chat' }} className={`w-10 h-10 rounded-lg flex items-center justify-center transition ${tab === 'chat' ? 'bg-[#464646]' : 'hover:bg-[#3a3a3a]'}`} title="聊天">
             <svg className="w-5 h-5 text-gray-300" fill="currentColor" viewBox="0 0 24 24"><path d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm0 14H6l-2 2V4h16v12z"/></svg>
           </button>
-          <button onClick={() => setTab('contacts')} className={`w-10 h-10 rounded-lg flex items-center justify-center transition ${tab === 'contacts' ? 'bg-[#464646]' : 'hover:bg-[#3a3a3a]'}`} title="通讯录">
+          <button onClick={() => { setTab('contacts'); tabRef.current = 'contacts'; setFriendUnread(0) }} className={`relative w-10 h-10 rounded-lg flex items-center justify-center transition ${tab === 'contacts' ? 'bg-[#464646]' : 'hover:bg-[#3a3a3a]'}`} title="通讯录">
             <svg className="w-5 h-5 text-gray-300" fill="currentColor" viewBox="0 0 24 24"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg>
+            {friendUnread > 0 && <span className="absolute -top-0.5 -right-0.5 min-w-[16px] h-4 px-1 bg-[#f55c5c] text-white text-[10px] leading-4 text-center rounded-full">{friendUnread > 99 ? '99+' : friendUnread}</span>}
           </button>
         </div>
         <div className="flex flex-col items-center gap-2">
@@ -300,6 +402,15 @@ export default function Chat({ auth, onLogout }) {
                 </div>
                 <Messages msgs={msgs} userId={auth.userId} getColor={getColor} onLoadMore={() => loadMoreMessages(currentConvId)} loading={loadingMsgs} noMore={noMoreMsgs[currentConvId]} />
                 <div className="px-4 py-3 border-t border-[#d6d6d6] bg-[#ededed]">
+                  {sendError && (
+                    <div className="flex items-center gap-2 mb-2 px-3 py-2 rounded-md bg-[#fdeeee] border border-[#f5d0d0] text-[#d94a4a] text-xs">
+                      <svg className="w-3.5 h-3.5 shrink-0" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/></svg>
+                      <span className="flex-1">{sendError}</span>
+                      <button onClick={() => setSendError('')} className="shrink-0 text-[#d94a4a] hover:text-[#b83636] leading-none" title="关闭">
+                        <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 24 24"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+                      </button>
+                    </div>
+                  )}
                   <div className="flex gap-2 items-center">
                     <input className="flex-1 px-3 py-2 rounded-md bg-white outline-none text-sm border border-[#e0e0e0] focus:border-[#07c160] transition" placeholder="输入消息..." value={input} onChange={e => setInput(e.target.value)} onKeyDown={e => e.key === 'Enter' && sendMsg()} />
                     <button onClick={sendMsg} className="px-4 py-2 bg-[#07c160] text-white rounded-md text-sm hover:bg-[#06ae56] transition">发送</button>
@@ -316,7 +427,7 @@ export default function Chat({ auth, onLogout }) {
       {/* 联系人模式 */}
       {tab === 'contacts' && (
         <div className="flex-1 bg-[#ededed]">
-          <Contacts auth={auth} getColor={getColor} onStartChat={startChatWith} />
+          <Contacts auth={auth} getColor={getColor} onStartChat={startChatWith} friendTick={friendTick} onFriendDeleted={handleFriendDeleted} />
         </div>
       )}
 
