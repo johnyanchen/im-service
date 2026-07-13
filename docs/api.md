@@ -19,7 +19,7 @@ Frontend ──HTTP/WS──▶ Gateway ──gRPC──▶ Logic ──Kafka─
 |------|------|------|------|
 | POST | `/api/login` | 登录 | 否 |
 | POST | `/api/register` | 注册 | 否 |
-| GET | `/api/users` | 列出所有用户 | 是 |[官网对外接口文档.md](../../Downloads/%E5%AE%98%E7%BD%91%E5%AF%B9%E5%A4%96%E6%8E%A5%E5%8F%A3%E6%96%87%E6%A1%A3.md)
+| GET | `/api/users` | 列出所有用户 | 是 |
 | POST | `/api/messages` | 发送消息 | 是 |
 | GET | `/api/sync` | 增量同步会话列表 | 是 |
 | GET | `/api/conversations/{id}/messages` | 拉取会话历史消息 | 是 |

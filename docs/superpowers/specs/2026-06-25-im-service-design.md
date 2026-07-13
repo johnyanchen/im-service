@@ -161,8 +161,6 @@ user_conversations(
   updated_at       -- 会话列表排序依据
 )
 
--- 用户同步状态
-user_sessions(user_id, last_sync_at)
 ```
 
 ### Redis
